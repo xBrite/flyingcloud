@@ -66,3 +66,6 @@ target/
 Session.vim
 .netrwhist
 *~
+
+# setuptools
+setuptools-*.zip
