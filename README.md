@@ -10,7 +10,7 @@ This is a Python library and set of tools that lets you build [Docker](http://do
 
 ## Installation
 
-* `python setup.py install`
+* `pip install flyingcloud`
 
 ## Contributing
 
