@@ -1,17 +1,16 @@
 # flyingcloud
 ### Build Docker images using SaltStack
 
-This is a Python library and set of tools that lets you build Docker images using [SaltStack](http://saltstack.com/) instead of using Dockerfiles.
+This is a Python library and set of tools that lets you build [Docker](http://docker.com) images using [SaltStack](http://saltstack.com/) instead of (or in addition to) using Dockerfiles.
 
 ### Why would I want to do that?
 
 * Because you want to install the same software stack on developer workstations and don't want to maintain two separate ways of installing a complex stack of software.
-* Because you are installng a complex stack of software and have outgrown Docker's simple installation system.
+* Because you are installing a complex stack of software and have outgrown Docker's simple installation system.
 
 ## Installation
 
 * `python setup.py install`
-
 
 ## Contributing
 
