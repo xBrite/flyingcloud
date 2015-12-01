@@ -7,7 +7,7 @@ from __future__ import absolute_import
 import os
 import subprocess
 
-from .process import run_command
+from flyingcloud.utils.process import run_command
 
 
 class VCS(object):

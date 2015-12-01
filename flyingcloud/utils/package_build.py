@@ -12,8 +12,8 @@ import json
 import os
 import zipfile
 
-from vcs import find_vcs
-from archive import abspath, zip_add_directory, zip_write_directory, check_zipfile
+from flyingcloud.utils.vcs import find_vcs
+from flyingcloud.utils.archive import abspath, zip_add_directory, zip_write_directory, check_zipfile
 
 
 VERSION = "0.2.1"
