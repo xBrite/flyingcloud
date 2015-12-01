@@ -10,7 +10,7 @@ setup(name='flyingcloud',
       license='Apache Software License 2.0',
       url='https://github.com/cookbrite/flyingcloud',
       packages=find_packages(exclude='tests'),
-      install_requires=['docker-py'],
+      install_requires=['docker-py', 'sh'],
       classifers=['Programming Language :: Python',
                   'Programming Language :: Python :: 2.7',
                   'Development Status :: 3 - Alpha',
@@ -25,4 +25,4 @@ setup(name='flyingcloud',
                   'Topic :: System :: Distributed Computing'],
       long_description=open('README.md').read(),
       keywords="docker saltstack devops automation"
-     )
+      )
