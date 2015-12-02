@@ -7,7 +7,7 @@ import os
 import tarfile
 import zipfile
 
-from .file import abspath
+from flyingcloud.utils.file import abspath
 
 
 def tar_compression_mode(filename):
