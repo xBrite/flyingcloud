@@ -2,10 +2,11 @@
 
 from __future__ import absolute_import
 
+import errno
 import fnmatch
 import os
+import re
 import shutil
-import errno
 
 
 def abspath(path):
@@ -48,3 +49,45 @@ def find_recursive_pattern(base_dir, pattern):
     for root, dirnames, filenames in os.walk(base_dir):
         for filename in fnmatch.filter(filenames, pattern):
             yield os.path.join(root, filename)
+
+
+def walk_tree(dir, includes, excludes=None):
+    """Walk a directory tree, including and excluding files and dirs by wildcards.
+
+    Adapted (and fixed!) from http://stackoverflow.com/a/5141829/6364
+    """
+    # Transform glob patterns to regular expressions
+    includes_re = re.compile('|'.join([fnmatch.translate(x)
+                                       for x in includes]))
+    excludes_re = re.compile('|'.join([fnmatch.translate(x)
+                                       for x in excludes])
+                             if excludes else '$.')
+
+    for top, dirs, files in os.walk(dir, topdown=True):
+        # exclude directories by mutating `dirs`
+        dirs[:] = [d for d in dirs
+                   if not excludes_re.search(os.path.join(top, d))]
+
+        # exclude/include files
+        files = [os.path.join(top, f) for f in files]
+        files = [f for f in files if not excludes_re.search(f)]
+        files = [f for f in files if includes_re.search(f)]
+
+        for fname in files:
+            yield fname
+
+
+class ChDir(object):
+    """
+    Step into a directory temporarily.
+    """
+    def __init__(self, path):
+        self.old_dir = os.getcwd()
+        self.new_dir = path
+
+    def __enter__(self):
+        os.chdir(self.new_dir)
+        return self.old_dir
+
+    def __exit__(self, *args):
+        os.chdir(self.old_dir)
