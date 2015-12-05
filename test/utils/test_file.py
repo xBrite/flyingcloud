@@ -3,10 +3,11 @@
 import os
 from unittest import TestCase
 
-from flyingcloud.utils import walk_tree, abspath, ChDir
+from flyingcloud.utils import walk_tree, abspath, PushDir
 
 PACKAGE_ROOT = abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 THIS_FILE = os.path.splitext(__file__)[0] + '.py'  # Otherwise, sometimes ends in '.pyc'
+
 
 class TestFileUtils(TestCase):
     def _test_walk_tree(self, top, this_file):
@@ -17,7 +18,7 @@ class TestFileUtils(TestCase):
         self.assertIn(this_file, files)
 
     def test_walk_tree_relative(self):
-        with ChDir(PACKAGE_ROOT):
+        with PushDir(PACKAGE_ROOT):
             self._test_walk_tree(
                 ".",
                 os.path.join(".", os.path.relpath(THIS_FILE, PACKAGE_ROOT)))
