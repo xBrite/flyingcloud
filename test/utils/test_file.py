@@ -99,7 +99,9 @@ class TestFileUtils(TestCase):
         self.assertEqual(set(expected), result)
 
     def test_mock_walk_tree(self):
-        dirtree = ['foo.py', 'foo.pyc', 'test_foo.py', 'bar.py']
-        expected = ['./foo.py', './bar.py']
-        self._test_mock_walk_tree(dirtree, '.', ['*.py'], ['test_*'], expected)
+        dirtree = ['foo.py', 'foo.pyc', 'test_foo.py', 'foobar.md',
+                   {'quux': ['bar.py', 'testbar.py']},
+                   {'test_me': ['README.md']}]
+        expected = ['./foo.py', './foobar.md', './quux/bar.py', './quux/testbar.py']
+        self._test_mock_walk_tree(dirtree, '.', ['*.py', '*.md'], ['test_*'], expected)
 
