@@ -76,3 +76,30 @@ def walk_tree(dir, includes, excludes=None):
         for fname in files:
             yield fname
 
+
+class MockWalk:
+    """Mock implementation of os.walk."""
+    def __init__(self, dirtree):
+        self.dirtree = dirtree
+
+    def __call__(self, top, topdown=True, onerror=None, followlinks=False):
+        "Emulate os.walk with `self.dirtree`"
+        return self.walk(self.dirtree, top, topdown)
+
+    def walk(self, dirtree, top, topdown):
+        dirs, nondirs, dirmap = [], [], {}
+        for node in dirtree:
+            if isinstance(node, dict):
+                for name, subdir in node.items():
+                    dirs.append(name)
+                    dirmap[name] = subdir
+            else:
+                nondirs.append(node)
+
+        if topdown:
+            yield top, dirs, nondirs
+        for name in dirs:
+            for x in self.walk(dirmap[name], os.path.join(top, name), topdown):
+                yield x
+        if not topdown:
+            yield top, dirs, nondirs
