@@ -63,18 +63,18 @@ def walk_tree(root, includes, excludes=None):
                                        for x in excludes])
                              if excludes else '$.')
 
-    for top, dirs, files in os.walk(root, topdown=True):
-        # exclude directories by mutating `dirs`
-        dirs[:] = [d for d in dirs
+    for top, dirnames, filenames in os.walk(root, topdown=True):
+        # exclude directories by mutating `dirnames`
+        dirnames[:] = [d for d in dirnames
                    if not excludes_re.search(os.path.join(top, d))]
 
-        # exclude/include files
-        files = [os.path.join(top, f) for f in files]
-        files = [f for f in files if not excludes_re.search(f)]
-        files = [f for f in files if includes_re.search(f)]
+        # exclude/include filenames
+        filenames = [os.path.join(top, f) for f in filenames]
+        filenames = [f for f in filenames if not excludes_re.search(f)]
+        filenames = [f for f in filenames if includes_re.search(f)]
 
-        for fname in files:
-            yield fname
+        for f in filenames:
+            yield f
 
 
 class MockWalk:
