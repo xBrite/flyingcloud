@@ -2,6 +2,7 @@
 
 import os
 from unittest import TestCase
+import mock
 
 from flyingcloud.utils import walk_tree, abspath, PushDir, MockWalk
 
@@ -32,7 +33,7 @@ class TestFileUtils(TestCase):
         for top, dirs, files in walker(root):
             for f in files:
                 result.add(os.path.join(top, f))
-        self.assertEqual(result, set(expected))
+        self.assertEqual(set(expected), result)
 
     def test_mock_walk_relative(self):
         dirtree = [
@@ -91,4 +92,14 @@ class TestFileUtils(TestCase):
             "/what/ever/package.egg-info/SOURCES.txt"
         ]
         self._test_mock_walk(dirtree, root, expected)
+
+    def _test_mock_walk_tree(self, dirtree, root, includes, excludes, expected):
+        with mock.patch('os.walk', MockWalk(dirtree)):
+            result = set(walk_tree(root, includes, excludes))
+        self.assertEqual(set(expected), result)
+
+    def test_mock_walk_tree(self):
+        dirtree = ['foo.py', 'foo.pyc', 'test_foo.py', 'bar.py']
+        expected = ['./foo.py', './bar.py']
+        self._test_mock_walk_tree(dirtree, '.', ['*.py'], ['test_*'], expected)
 

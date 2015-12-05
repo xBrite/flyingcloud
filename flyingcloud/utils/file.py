@@ -51,7 +51,7 @@ def find_recursive_pattern(base_dir, pattern):
             yield os.path.join(root, filename)
 
 
-def walk_tree(dir, includes, excludes=None):
+def walk_tree(root, includes, excludes=None):
     """Walk a directory tree, including and excluding files and dirs by wildcards.
 
     Adapted (and fixed!) from http://stackoverflow.com/a/5141829/6364
@@ -63,7 +63,7 @@ def walk_tree(dir, includes, excludes=None):
                                        for x in excludes])
                              if excludes else '$.')
 
-    for top, dirs, files in os.walk(dir, topdown=True):
+    for top, dirs, files in os.walk(root, topdown=True):
         # exclude directories by mutating `dirs`
         dirs[:] = [d for d in dirs
                    if not excludes_re.search(os.path.join(top, d))]
