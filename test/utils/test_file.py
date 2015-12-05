@@ -26,7 +26,35 @@ class TestFileUtils(TestCase):
     def test_walk_tree_absolute(self):
         self._test_walk_tree(PACKAGE_ROOT, THIS_FILE)
 
-    def test_mock_walk(self):
+    def _test_mock_walk(self, dirtree, root, expected):
+        walker = MockWalk(dirtree)
+        result = set()
+        for top, dirs, files in walker(root):
+            for f in files:
+                result.add(os.path.join(top, f))
+        self.assertEqual(result, set(expected))
+
+    def test_mock_walk_relative(self):
+        dirtree = [
+            'alpha',
+            'beta',
+            {'gamma' : [ 'delta', 'epsilon'],
+             'zeta' : [{'eta': [{'theta': ['iota']}]}],
+             'kappa' : [],
+             'lambda': ['mu']
+             }
+        ]
+        expected = [
+            './alpha',
+            './beta',
+            './gamma/delta',
+            './gamma/epsilon',
+            './zeta/eta/theta/iota',
+            './lambda/mu'
+        ]
+        self._test_mock_walk(dirtree, '.', expected)
+
+    def test_mock_walk_absolute(self):
         dirtree = [
             'LICENSE',
             'README.md',
@@ -50,25 +78,17 @@ class TestFileUtils(TestCase):
             },
             'setup.py'
         ]
-        walker = MockWalk(dirtree)
-        result = set()
-        for top, dirs, files in walker('/what/ever'):
-            for f in files:
-                result.add(os.path.join(top, f))
-        self.assertEqual(
-            result,
-            set([
-                "/what/ever/LICENSE",
-                "/what/ever/README.md",
-                "/what/ever/setup.py",
-                "/what/ever/package/__init__.py",
-                "/what/ever/package/foo.py",
-                "/what/ever/package/utils/file.py",
-                "/what/ever/package/utils/context_manager.py",
-                "/what/ever/package.egg-info/PKG-INFO",
-                "/what/ever/package.egg-info/SOURCES.txt"
-            ]))
-
-
-
+        root = '/what/ever'
+        expected = [
+            "/what/ever/LICENSE",
+            "/what/ever/README.md",
+            "/what/ever/setup.py",
+            "/what/ever/package/__init__.py",
+            "/what/ever/package/foo.py",
+            "/what/ever/package/utils/file.py",
+            "/what/ever/package/utils/context_manager.py",
+            "/what/ever/package.egg-info/PKG-INFO",
+            "/what/ever/package.egg-info/SOURCES.txt"
+        ]
+        self._test_mock_walk(dirtree, root, expected)
 
