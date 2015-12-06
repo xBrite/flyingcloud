@@ -51,7 +51,7 @@ def find_recursive_pattern(base_dir, pattern):
             yield os.path.join(root, filename)
 
 
-def walk_tree(root, includes, excludes=None):
+def walk_dir_tree(root, includes, excludes=None):
     """Walk a directory tree, including and excluding files and dirs by wildcards.
 
     Adapted (and fixed!) from http://stackoverflow.com/a/5141829/6364
@@ -77,7 +77,7 @@ def walk_tree(root, includes, excludes=None):
             yield f
 
 
-class MockWalk:
+class MockDirWalk:
     """Mock implementation of os.walk."""
     def __init__(self, dirtree):
         self.dirtree = dirtree
@@ -86,20 +86,20 @@ class MockWalk:
         "Emulate os.walk with `self.dirtree`"
         return self.walk(self.dirtree, top, topdown)
 
-    def walk(self, dirtree, top, topdown):
-        dirs, nondirs, dirmap = [], [], {}
-        for node in dirtree:
+    def walk(self, dirlist, top, topdown):
+        dirnames, filenames, dirmap = [], [], {}
+        for node in dirlist:
             if isinstance(node, dict):
                 for name, subdir in node.items():
-                    dirs.append(name)
+                    dirnames.append(name)
                     dirmap[name] = subdir
             else:
-                nondirs.append(node)
+                filenames.append(node)
 
         if topdown:
-            yield top, dirs, nondirs
-        for name in dirs:
-            for x in self.walk(dirmap[name], os.path.join(top, name), topdown):
-                yield x
+            yield top, dirnames, filenames
+        for name in dirnames:
+            for t,d,f in self.walk(dirmap[name], os.path.join(top, name), topdown):
+                yield t,d,f
         if not topdown:
-            yield top, dirs, nondirs
+            yield top, dirnames, filenames
