@@ -26,6 +26,6 @@ setup(name='flyingcloud',
                    'Topic :: Utilities',
                    'Topic :: System :: Clustering',
                    'Topic :: System :: Distributed Computing'],
-      long_description=open('README.md').read(),
+      long_description=open('README.rst').read(),
       keywords="docker saltstack devops automation"
       )
