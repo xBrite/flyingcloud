@@ -164,7 +164,6 @@ class DockerBuildLayer(object):
             duration = round(time.time() - start_time)
             namespace.logger.info(
                 "Finished Salting: duration=%d:%02d minutes", duration // 60, duration % 60)
-            namespace.logger.debug("%r", salt_output)
             if self.salt_error(salt_output):
                 raise ExecError("salt_highstate failed.")
 
@@ -254,7 +253,7 @@ class DockerBuildLayer(object):
             if line.endswith('\n'):
                 namespace.logger.debug("%s: %s", logger_prefix, line.rstrip('\n'))
                 line = ''
-        return ''.join(full_output)
+        return '\n'.join(full_output)
 
     @classmethod
     def docker_commit(cls, namespace, container_id, result_image_name):
