@@ -23,7 +23,7 @@ Installation
 
 .. code-block:: bash
 
-    `pip install flyingcloud`
+    $ pip install flyingcloud
 
 ============
 Contributing
