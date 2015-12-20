@@ -62,6 +62,7 @@ class DockerBuildLayer(object):
     SaltStateDir = None
     CommandName = None
     SaltExecTimeout = 40 * 60  # seconds, for long-running commands
+    DefaultTimeout = 2 * 60 # need longer than default timeout for most commands
     USERNAME_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
     PASSWORD_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
 
@@ -445,6 +446,7 @@ class DockerBuildLayer(object):
     @classmethod
     def docker_client(cls, namespace, *args, **kwargs):
         namespace.logger.info("Platform is '{}'.".format(platform.system()))
+        kwargs.setdefault('timeout', cls.DefaultTimeout)
         if cls.RegistryDockerVersion:
             kwargs.setdefault('version', cls.RegistryDockerVersion)
         if platform.system() == "Darwin":
