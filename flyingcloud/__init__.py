@@ -362,6 +362,8 @@ class DockerBuildLayer(object):
     @classmethod
     def docker_login(cls, namespace):
         namespace.logger.info("Logging in to registry '%s' as user '%s'", cls.Registry, namespace.username)
+        assert namespace.username, "No username"
+        assert namespace.password, "No password"
         return namespace.docker.login(
             username=namespace.username, password=namespace.password, registry=cls.Registry)
 
@@ -473,6 +475,6 @@ class DockerBuildLayer(object):
             ca_cert=docker_machine_tls['CaCertPath'],
             assert_hostname=False,
             verify=True)
-        namespace.logger.info("Using '{}' as Docker base_url".format(base_url))
+        namespace.logger.info("Docker-Machine: using {}".format(kwargs))
         return kwargs
 
