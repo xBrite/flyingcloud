@@ -12,6 +12,7 @@ import docker
 import logging
 import os
 import platform
+import requests
 
 import re
 import sh
@@ -61,8 +62,8 @@ class DockerBuildLayer(object):
     TargetImageName = None  # usually tagged with ":latest"
     SaltStateDir = None
     CommandName = None
-    SaltExecTimeout = 40 * 60  # seconds, for long-running commands
-    DefaultTimeout = 2 * 60 # need longer than default timeout for most commands
+    SaltExecTimeout = 45 * 60  # seconds, for long-running commands
+    DefaultTimeout = 5 * 60 # need longer than default timeout for most commands
     USERNAME_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
     PASSWORD_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
 
@@ -165,6 +166,7 @@ class DockerBuildLayer(object):
             duration = round(time.time() - start_time)
             namespace.logger.info(
                 "Finished Salting: duration=%d:%02d minutes", duration // 60, duration % 60)
+            namespace.logger.debug("%r", salt_output)
             if self.salt_error(salt_output):
                 raise ExecError("salt_highstate failed.")
 
@@ -190,16 +192,26 @@ class DockerBuildLayer(object):
             cls, namespace, container_name, image_name,
             environment=None, detach=True, volume_map=None):
         namespace.logger.info("Creating container '%s' from image %s", container_name, image_name)
+        namespace.logger.info("Tags for image '%s': %s",
+                              image_name, cls.docker_tags_for_image(namespace, image_name))
         container = namespace.docker.create_container(
             name=container_name,
             image=image_name,
             environment=environment,
             detach=detach,
-            **cls.docker_volumes(namespace, volume_map)
-        )
+            **cls.docker_volumes(namespace, volume_map))
         container_id = container['Id']
         namespace.logger.info("Created container %s, result=%r", container_id[:12], container)
         return container_id
+
+    @classmethod
+    def docker_tags_for_image(cls, namespace, image_name):
+        parts = image_name.split('/')
+        if parts:
+            url = "https://{0}/v1/repositories/{1}/{2}/tags".format(
+                parts[0], parts[1], parts[2].split(':')[0])
+            r = requests.get(url, auth=(namespace.username, namespace.password))
+            return r.json()
 
     @classmethod
     def docker_volumes(cls, namespace, volume_map):
@@ -408,7 +420,7 @@ class DockerBuildLayer(object):
             **defaults
         )
         parser.add_argument(
-            '--timeout', '-t', type=int, default=1 * 60,
+            '--timeout', '-t', type=int, default=cls.DefaultTimeout,
             help="Docker client timeout in seconds. Default: %(default)s")
         parser.add_argument(
             '--no-squash', '-S', dest='squash_layer', action='store_false',
