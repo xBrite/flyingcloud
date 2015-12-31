@@ -116,6 +116,7 @@ class DockerBuildLayer(object):
             source_image_name=self.source_image_name,
             result_image_name=self.layer_timestamp_name,
             salt_dir=salt_dir)
+        layer_strong_name = None
         if namespace.squash_layer and self.SquashLayer:
             layer_strong_name = self.docker_squash(
                 namespace,
@@ -123,7 +124,7 @@ class DockerBuildLayer(object):
                 latest_image_name=self.layer_latest_name,
                 squashed_image_name=self.layer_squashed_name)
             remove_layer = self.layer_timestamp_name
-        else:
+        if layer_strong_name is None:
             layer_strong_name = self.layer_timestamp_name
             namespace.logger.info("Not squashing layer %s", layer_strong_name)
             remove_layer = None
@@ -275,9 +276,12 @@ class DockerBuildLayer(object):
 
     @classmethod
     def docker_squash(cls, namespace, image_name, latest_image_name, squashed_image_name):
-        # TODO: handle no docker-squash binary; find path to docker-squash
         installation_prefix = os.environ.get('VIRTUAL_ENV', '/usr/local')
-        docker_squash_cmd = sh.Command("{}/bin/docker-squash".format(installation_prefix))
+        docker_squash_path = os.path.join(installation_prefix, 'bin', 'docker-squash')
+        if not os.path.exists(docker_squash_path):
+            namespace.logger.info("Can't find %s; not squashing", docker_squash_path)
+            return None
+        docker_squash_cmd = sh.Command(docker_squash_path)
 
         try:
             input_temp = tempfile.NamedTemporaryFile(suffix="-input-image.tar", delete=False)
