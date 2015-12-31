@@ -18,6 +18,9 @@ import re
 import sh
 import time
 
+from .utils import disk_usage, abspath
+
+
 STREAMING_CHUNK_SIZE = (1 << 20)
 
 
@@ -193,8 +196,10 @@ class DockerBuildLayer(object):
             cls, namespace, container_name, image_name,
             environment=None, detach=True, volume_map=None):
         namespace.logger.info("Creating container '%s' from image %s", container_name, image_name)
-        namespace.logger.info("Tags for image '%s': %s",
-                              image_name, cls.docker_tags_for_image(namespace, image_name))
+        cls.log_disk_usage(namespace)
+        namespace.logger.debug(
+            "Tags for image '%s': %s",
+            image_name, cls.docker_tags_for_image(namespace, image_name))
         container = namespace.docker.create_container(
             name=container_name,
             image=image_name,
@@ -204,6 +209,11 @@ class DockerBuildLayer(object):
         container_id = container['Id']
         namespace.logger.info("Created container %s, result=%r", container_id[:12], container)
         return container_id
+
+    @classmethod
+    def log_disk_usage(cls, namespace, *extra_paths):
+        for path in ('/', abspath('~/.docker'), tempfile.gettempdir()) + extra_paths:
+            namespace.logger.info("Disk Usage '%s': %r", path, disk_usage(path))
 
     @classmethod
     def docker_tags_for_image(cls, namespace, image_name):
@@ -283,6 +293,7 @@ class DockerBuildLayer(object):
             return None
         docker_squash_cmd = sh.Command(docker_squash_path)
 
+        cls.log_disk_usage(namespace)
         try:
             input_temp = tempfile.NamedTemporaryFile(suffix="-input-image.tar", delete=False)
             output_temp = tempfile.NamedTemporaryFile(suffix="-output-image.tar", delete=False)
@@ -363,6 +374,7 @@ class DockerBuildLayer(object):
     @classmethod
     def docker_pull(cls, namespace, image_name):
         namespace.logger.info("docker_pull %s", image_name)
+        cls.log_disk_usage(namespace)
         repo, tag = cls.image_name2repo_tag(image_name)
         generator = namespace.docker.pull(repository=repo, tag=tag, stream=True)
         full_output = cls.read_docker_output_stream(namespace, generator, "docker_pull")
