@@ -81,6 +81,8 @@ class DockerBuildLayer(object):
         namespace = cls.parse_args(defaults, *layer_classes, **kwargs)
 
         namespace.logger.info("Build starting...")
+        cls.log_disk_usage(namespace)
+        cls.docker_info(namespace)
         namespace.func(namespace)
         namespace.logger.info("Build finished")
 
@@ -196,7 +198,6 @@ class DockerBuildLayer(object):
             cls, namespace, container_name, image_name,
             environment=None, detach=True, volume_map=None):
         namespace.logger.info("Creating container '%s' from image %s", container_name, image_name)
-        cls.log_disk_usage(namespace)
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, cls.docker_tags_for_image(namespace, image_name))
@@ -212,8 +213,13 @@ class DockerBuildLayer(object):
 
     @classmethod
     def log_disk_usage(cls, namespace, *extra_paths):
-        for path in ('/', abspath('~/.docker'), tempfile.gettempdir()) + extra_paths:
-            namespace.logger.info("Disk Usage '%s': %r", path, disk_usage(path))
+        for path in (
+                '/',
+                abspath('~/.docker'),
+                '/var/lib/docker',
+                tempfile.gettempdir()) + extra_paths:
+            if os.path.exists(path):
+                namespace.logger.info("Disk Usage '%s': %r", path, disk_usage(path))
 
     @classmethod
     def docker_tags_for_image(cls, namespace, image_name):
@@ -374,7 +380,6 @@ class DockerBuildLayer(object):
     @classmethod
     def docker_pull(cls, namespace, image_name):
         namespace.logger.info("docker_pull %s", image_name)
-        cls.log_disk_usage(namespace)
         repo, tag = cls.image_name2repo_tag(image_name)
         generator = namespace.docker.pull(repository=repo, tag=tag, stream=True)
         full_output = cls.read_docker_output_stream(namespace, generator, "docker_pull")
@@ -394,6 +399,12 @@ class DockerBuildLayer(object):
         assert namespace.password, "No password"
         return namespace.docker.login(
             username=namespace.username, password=namespace.password, registry=cls.Registry)
+
+    @classmethod
+    def docker_info(cls, namespace):
+        info = namespace.docker.info()
+        namespace.logger.info("Docker Info: %r", info)
+        return info
 
     @classmethod
     def configure_logging(cls, namespace):
