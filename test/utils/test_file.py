@@ -34,75 +34,84 @@ class TestFileUtils(TestCase):
         for top, dirs, files in walker(root):
             for f in files:
                 result.add(os.path.join(top, f))
-        self.assertEqual(set(expected), result)
+        self.assertEqual(set([os.path.join(root, e) for e in expected]), result)
+
+    GreekDirTree = [
+        'alpha',
+        'beta',
+        {'gamma' : [ 'delta', 'epsilon'],
+         'zeta' : [{'eta': [{'theta': ['iota']}]}],
+         'kappa' : [],
+         'lambda': ['mu']
+         }
+    ]
+
+    GreekExpected = [
+        'alpha',
+        'beta',
+        'gamma/delta',
+        'gamma/epsilon',
+        'zeta/eta/theta/iota',
+        'lambda/mu'
+    ]
+
+    PackageDirTree = [
+        'LICENSE',
+        'README.md',
+        {
+            'package' : [
+                '__init__.py',
+                {
+                    'utils': [
+                        'file.py',
+                        'context_manager.py'
+                    ]
+                },
+                'foo.py',
+                'bar.py'
+            ]
+        },
+        {
+            'package.egg-info': [
+                'PKG-INFO',
+                'SOURCES.txt'
+            ]
+        },
+        'Changelog.txt',
+        'setup.py'
+    ]
+
+    PackageExpected = [
+        "LICENSE",
+        "README.md",
+        "Changelog.txt",
+        "setup.py",
+        "package/__init__.py",
+        "package/bar.py",
+        "package/foo.py",
+        "package/utils/file.py",
+        "package/utils/context_manager.py",
+        "package.egg-info/PKG-INFO",
+        "package.egg-info/SOURCES.txt"
+    ]
 
     def test_mock_dirwalk_relative(self):
-        dirtree = [
-            'alpha',
-            'beta',
-            {'gamma' : [ 'delta', 'epsilon'],
-             'zeta' : [{'eta': [{'theta': ['iota']}]}],
-             'kappa' : [],
-             'lambda': ['mu']
-             }
-        ]
-        expected = [
-            './alpha',
-            './beta',
-            './gamma/delta',
-            './gamma/epsilon',
-            './zeta/eta/theta/iota',
-            './lambda/mu'
-        ]
-        self._test_mock_dirwalk(dirtree, '.', expected)
+        self._test_mock_dirwalk(self.GreekDirTree, '.', self.GreekExpected)
 
     def test_mock_dirwalk_absolute(self):
-        dirtree = [
-            'LICENSE',
-            'README.md',
-            {
-                'package' : [
-                    '__init__.py',
-                    {
-                        'utils': [
-                            'file.py',
-                            'context_manager.py'
-                        ]
-                    },
-                    'foo.py'
-                ]
-            },
-            {
-                'package.egg-info': [
-                    'PKG-INFO',
-                    'SOURCES.txt'
-                ]
-            },
-            'setup.py'
-        ]
-        root = '/what/ever'
-        expected = [
-            "/what/ever/LICENSE",
-            "/what/ever/README.md",
-            "/what/ever/setup.py",
-            "/what/ever/package/__init__.py",
-            "/what/ever/package/foo.py",
-            "/what/ever/package/utils/file.py",
-            "/what/ever/package/utils/context_manager.py",
-            "/what/ever/package.egg-info/PKG-INFO",
-            "/what/ever/package.egg-info/SOURCES.txt"
-        ]
-        self._test_mock_dirwalk(dirtree, root, expected)
+        self._test_mock_dirwalk(self.PackageDirTree, '/what/ever', self.PackageExpected)
 
     def _test_mock_dirwalk_tree(self, dirtree, root, includes, excludes, expected):
         with mock.patch('os.walk', MockDirWalk(dirtree)):
             result = set(walk_dir_tree(root, includes, excludes))
-        self.assertEqual(set(expected), result)
+        self.assertEqual(set([os.path.join(root, e) for e in expected]), result)
 
     def test_mock_dirwalk_tree(self):
         dirtree = ['foo.py', 'foo.pyc', 'test_foo.py', 'foobar.md',
                    {'quux': ['bar.py', 'testbar.py']},
                    {'test_me': ['README.md']}]
-        expected = ['./foo.py', './foobar.md', './quux/bar.py', './quux/testbar.py']
+        expected = ['foo.py', 'foobar.md', 'quux/bar.py', 'quux/testbar.py']
         self._test_mock_dirwalk_tree(dirtree, '.', ['*.py', '*.md'], ['test_*'], expected)
 
+    def test_filter_mock_dir_walk(self):
+        pass
