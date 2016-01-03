@@ -22,18 +22,17 @@ class TestFileUtils(TestCase):
     def test_walk_dir_tree_relative(self):
         with PushDir(PACKAGE_ROOT):
             self._test_walk_dir_tree(
-                ".",
-                os.path.join(".", os.path.relpath(THIS_FILE, PACKAGE_ROOT)))
+                top=".",
+                this_file=os.path.join(".", os.path.relpath(THIS_FILE, PACKAGE_ROOT)))
 
     def test_walk_dir_tree_absolute(self):
         self._test_walk_dir_tree(PACKAGE_ROOT, THIS_FILE)
 
     def _test_mock_dirwalk(self, dirtree, root, expected):
         walker = MockDirWalk(dirtree)
-        result = set()
-        for top, dirs, files in walker(root):
-            for f in files:
-                result.add(os.path.join(top, f))
+        result = set(os.path.join(top, f)
+            for top, dirs, files in walker(root)
+                for f in files)
         self.assertEqual(set([os.path.join(root, e) for e in expected]), result)
 
     GreekDirTree = [
@@ -97,8 +96,10 @@ class TestFileUtils(TestCase):
 
     def test_mock_dirwalk_relative(self):
         self._test_mock_dirwalk(self.GreekDirTree, '.', self.GreekExpected)
+        self._test_mock_dirwalk(self.PackageDirTree, '.', self.PackageExpected)
 
     def test_mock_dirwalk_absolute(self):
+        self._test_mock_dirwalk(self.GreekDirTree, '/some/where', self.GreekExpected)
         self._test_mock_dirwalk(self.PackageDirTree, '/what/ever', self.PackageExpected)
 
     def _test_mock_dirwalk_tree(self, dirtree, root, includes, excludes, expected):
