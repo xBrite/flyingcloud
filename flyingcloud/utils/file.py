@@ -80,21 +80,23 @@ else:
 
 
 def walk_dir_tree(root, includes, excludes=None):
-    """Walk a directory tree, including and excluding files and dirs by wildcards.
+    """Walk a directory tree, excluding dirs by wildcards
+    and including and excluding files by wildcards..
 
     Adapted (and fixed!) from http://stackoverflow.com/a/5141829/6364
     """
     # Transform glob patterns to regular expressions
-    includes_re = re.compile('|'.join([fnmatch.translate(x)
-                                       for x in includes]))
-    excludes_re = re.compile('|'.join([fnmatch.translate(x)
-                                       for x in excludes])
-                             if excludes else '$.')
+    includes_re = re.compile(
+        '|'.join([fnmatch.translate(x) for x in includes]))
+    excludes_re = re.compile(
+        '|'.join([fnmatch.translate(x) for x in excludes])
+        if excludes else '$.')
 
     for top, dirnames, filenames in os.walk(root, topdown=True):
         # exclude directories by mutating `dirnames`
-        dirnames[:] = [d for d in dirnames
-                   if not excludes_re.search(os.path.join(top, d))]
+        dirnames[:] = [
+            d for d in dirnames
+                if not excludes_re.search(os.path.join(top, d))]
 
         # exclude/include filenames
         filenames = [os.path.join(top, f) for f in filenames]

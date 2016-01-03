@@ -12,6 +12,7 @@ THIS_FILE = os.path.splitext(__file__)[0] + '.py'  # Otherwise, sometimes ends i
 
 class TestFileUtils(TestCase):
     def _test_walk_dir_tree(self, top, this_file):
+        # Walk a real file tree
         files = set(walk_dir_tree(top, ('*.py', '*.md'),
                                   ('test*.py', '__init__.py', '.git')))
         self.assertNotIn(this_file, files)
