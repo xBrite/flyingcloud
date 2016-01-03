@@ -81,7 +81,7 @@ else:
 
 def walk_dir_tree(root, includes, excludes=None):
     """Walk a directory tree, excluding dirs by wildcards
-    and including and excluding files by wildcards..
+    and including and excluding files by wildcards.
 
     Adapted (and fixed!) from http://stackoverflow.com/a/5141829/6364
     """

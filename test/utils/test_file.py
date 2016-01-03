@@ -107,12 +107,18 @@ class TestFileUtils(TestCase):
             result = set(walk_dir_tree(root, includes, excludes))
         self.assertEqual(set([os.path.join(root, e) for e in expected]), result)
 
-    def test_mock_dirwalk_tree(self):
+    def test_mock_dirwalk_tree1(self):
         dirtree = ['foo.py', 'foo.pyc', 'test_foo.py', 'foobar.md',
                    {'quux': ['bar.py', 'testbar.py']},
                    {'test_me': ['README.md']}]
         expected = ['foo.py', 'foobar.md', 'quux/bar.py', 'quux/testbar.py']
         self._test_mock_dirwalk_tree(dirtree, '.', ['*.py', '*.md'], ['test_*'], expected)
 
-    def test_filter_mock_dir_walk(self):
-        pass
+    def test_mock_dirwalk_tree2(self):
+        dirtree = ['foo.py', 'foo.pyc', 'test_foo.py', 'foobar.md',
+                   {'quux': ['bar.py', 'testbar.py', {
+                       'test_me': ['README.md'],
+                       'stuff': ['Nonsense.md']
+                   }] }]
+        expected = ['foo.py', 'foobar.md', 'quux/bar.py', 'quux/testbar.py', 'quux/stuff/Nonsense.md']
+        self._test_mock_dirwalk_tree(dirtree, '.', ['*.py', '*.md'], ['test_*'], expected)
