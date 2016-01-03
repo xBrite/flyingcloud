@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import collections
 import errno
 import fnmatch
 import os
@@ -49,6 +50,33 @@ def find_recursive_pattern(base_dir, pattern):
     for root, dirnames, filenames in os.walk(base_dir):
         for filename in fnmatch.filter(filenames, pattern):
             yield os.path.join(root, filename)
+
+
+# disk_usage: Adapted from http://code.activestate.com/recipes/577972-disk-usage/
+if hasattr(shutil, 'disk_usage'):
+    # Python >= 3.3
+    disk_usage = shutil.disk_usage
+
+elif hasattr(os, 'statvfs'):
+    # Posix
+    _ntuple_diskusage = collections.namedtuple('usage', 'total used free')
+
+    def disk_usage(path):
+        """Return disk usage statistics about the given path.
+
+        Returned value is a named tuple with attributes 'total', 'used' and
+        'free', which are the amount of total, used and free space, in bytes.
+        """
+        st = os.statvfs(path)
+        free = st.f_bavail * st.f_frsize
+        total = st.f_blocks * st.f_frsize
+        used = (st.f_blocks - st.f_bfree) * st.f_frsize
+        return _ntuple_diskusage(total, used, free)
+
+else:
+    # There is a Windows implementation in the recipe
+    def disk_usage(path):
+        raise NotImplementedError("disk_usage not supported")
 
 
 def walk_dir_tree(root, includes, excludes=None):
