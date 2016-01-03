@@ -79,15 +79,20 @@ else:
         raise NotImplementedError("disk_usage not supported")
 
 
-def walk_dir_tree(root, includes, excludes=None):
-    """Walk a directory tree, excluding dirs by wildcards
-    and including and excluding files by wildcards.
+def walk_dir_tree(root, includes=None, excludes=None):
+    """Walk and filter a directory tree by wildcards.
+
+    :param includes: A list of file wildcards to include.
+        If `None`, then all files are (potentially) included.
+    :param excludes: A list of file and directory wildcards to exclude.
+        If `None`, then no files or directories are excluded.
 
     Adapted (and fixed!) from http://stackoverflow.com/a/5141829/6364
     """
     # Transform glob patterns to regular expressions
     includes_re = re.compile(
-        '|'.join([fnmatch.translate(x) for x in includes]))
+        '|'.join([fnmatch.translate(x) for x in includes])
+        if includes else '.*')
     excludes_re = re.compile(
         '|'.join([fnmatch.translate(x) for x in excludes])
         if excludes else '$.')

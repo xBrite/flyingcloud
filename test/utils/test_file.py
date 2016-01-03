@@ -60,6 +60,7 @@ class TestFileUtils(TestCase):
         {
             'package' : [
                 '__init__.py',
+                '__init__.pyc',
                 {
                     'utils': [
                         'file.py',
@@ -67,7 +68,9 @@ class TestFileUtils(TestCase):
                     ]
                 },
                 'foo.py',
-                'bar.py'
+                'foo.pyc',
+                'bar.py',
+                'bar.pyc'
             ]
         },
         {
@@ -76,8 +79,15 @@ class TestFileUtils(TestCase):
                 'SOURCES.txt'
             ]
         },
+        {
+            'test': [
+                'test_foo.py',
+                'test_bar.py'
+            ]
+        },
         'Changelog.txt',
-        'setup.py'
+        'setup.py',
+        'setup.pyc'
     ]
 
     PackageExpected = [
@@ -85,13 +95,19 @@ class TestFileUtils(TestCase):
         "README.md",
         "Changelog.txt",
         "setup.py",
+        "setup.pyc",
         "package/__init__.py",
+        "package/__init__.pyc",
         "package/bar.py",
+        "package/bar.pyc",
         "package/foo.py",
+        "package/foo.pyc",
         "package/utils/file.py",
         "package/utils/context_manager.py",
         "package.egg-info/PKG-INFO",
-        "package.egg-info/SOURCES.txt"
+        "package.egg-info/SOURCES.txt",
+        "test/test_foo.py",
+        "test/test_bar.py",
     ]
 
     def test_mock_dirwalk_relative(self):
@@ -107,18 +123,24 @@ class TestFileUtils(TestCase):
             result = set(walk_dir_tree(root, includes, excludes))
         self.assertEqual(set([os.path.join(root, e) for e in expected]), result)
 
-    def test_mock_dirwalk_tree1(self):
-        dirtree = ['foo.py', 'foo.pyc', 'test_foo.py', 'foobar.md',
-                   {'quux': ['bar.py', 'testbar.py']},
-                   {'test_me': ['README.md']}]
-        expected = ['foo.py', 'foobar.md', 'quux/bar.py', 'quux/testbar.py']
-        self._test_mock_dirwalk_tree(dirtree, '.', ['*.py', '*.md'], ['test_*'], expected)
+    def test_mock_dirwalk_tree_no_filters(self):
+        self._test_mock_dirwalk_tree(
+            self.PackageDirTree, '.', None, None,
+            [f for f in self.PackageExpected])
 
-    def test_mock_dirwalk_tree2(self):
-        dirtree = ['foo.py', 'foo.pyc', 'test_foo.py', 'foobar.md',
-                   {'quux': ['bar.py', 'testbar.py', {
-                       'test_me': ['README.md'],
-                       'stuff': ['Nonsense.md']
-                   }] }]
-        expected = ['foo.py', 'foobar.md', 'quux/bar.py', 'quux/testbar.py', 'quux/stuff/Nonsense.md']
-        self._test_mock_dirwalk_tree(dirtree, '.', ['*.py', '*.md'], ['test_*'], expected)
+    def test_mock_dirwalk_tree_exclude_test(self):
+        self._test_mock_dirwalk_tree(
+            self.PackageDirTree, '.', None, ['test_*'],
+            [f for f in self.PackageExpected if '/test_' not in f])
+
+    def test_mock_dirwalk_tree_include_py_md(self):
+        self._test_mock_dirwalk_tree(
+            self.PackageDirTree, '.', ['*.py', '*.md'], None,
+            [f for f in self.PackageExpected
+             if (f.endswith('.py') or f.endswith('.md'))])
+
+    def test_mock_dirwalk_tree_include_py_md_exclude_test(self):
+        self._test_mock_dirwalk_tree(
+            self.PackageDirTree, '.', ['*.py', '*.md'], ['test_*'],
+            [f for f in self.PackageExpected
+            if (f.endswith('.py') or f.endswith('.md')) and '/test_' not in f])
