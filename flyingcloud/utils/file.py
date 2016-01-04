@@ -91,7 +91,7 @@ def walk_dir_tree(root, includes=None, excludes=None):
     """
     # Transform glob patterns to regular expressions
     includes_re = re.compile(
-        '(^|/)' + '|'.join([fnmatch.translate(x) for x in includes])
+        '|'.join([fnmatch.translate(x) for x in includes])
         if includes else '.*')
     excludes_re = re.compile(
         '(^|/)' + '|'.join([fnmatch.translate(x) for x in excludes])
@@ -102,11 +102,10 @@ def walk_dir_tree(root, includes=None, excludes=None):
         dirnames[:] = [
             d for d in dirnames
                 if not excludes_re.search(os.path.join(top, d))]
-
-        # exclude/include filenames
-        filenames = [os.path.join(top, f) for f in filenames]
+        # filter filenames
+        filenames = [os.path.join(top, f) for f in filenames
+                     if includes_re.match(f)]
         filenames = [f for f in filenames if not excludes_re.search(f)]
-        filenames = [f for f in filenames if includes_re.search(f)]
 
         for f in filenames:
             yield f
