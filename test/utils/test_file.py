@@ -38,14 +38,30 @@ class TestFileUtils(TestCase):
     GreekDirTree = [
         'alpha',
         'beta',
-        {'gamma' : [ 'delta', 'epsilon'],
-         'zeta' : [{'eta': [{'theta': ['iota']}]}],
-         'kappa' : [],
-         'lambda': ['mu']
-         }
+        {
+            'gamma' : [
+                'delta',
+                'epsilon'
+            ],
+            'zeta' : [
+                {
+                    'eta': [
+                        {
+                            'theta': [
+                                'iota'
+                            ]
+                        }
+                    ]
+                }
+            ],
+            'kappa' : [],
+            'lambda': [
+                'mu'
+            ]
+        }
     ]
 
-    GreekExpected = [
+    GreekFilenames = [
         'alpha',
         'beta',
         'gamma/delta',
@@ -53,6 +69,7 @@ class TestFileUtils(TestCase):
         'zeta/eta/theta/iota',
         'lambda/mu'
     ]
+
 
     PackageDirTree = [
         'LICENSE',
@@ -90,7 +107,7 @@ class TestFileUtils(TestCase):
         'setup.pyc'
     ]
 
-    PackageExpected = [
+    PackageFilenames = [
         "LICENSE",
         "README.md",
         "Changelog.txt",
@@ -111,12 +128,12 @@ class TestFileUtils(TestCase):
     ]
 
     def test_mock_dirwalk_relative(self):
-        self._test_mock_dirwalk(self.GreekDirTree, '.', self.GreekExpected)
-        self._test_mock_dirwalk(self.PackageDirTree, '.', self.PackageExpected)
+        self._test_mock_dirwalk(self.GreekDirTree, '.', self.GreekFilenames)
+        self._test_mock_dirwalk(self.PackageDirTree, '.', self.PackageFilenames)
 
     def test_mock_dirwalk_absolute(self):
-        self._test_mock_dirwalk(self.GreekDirTree, '/some/where', self.GreekExpected)
-        self._test_mock_dirwalk(self.PackageDirTree, '/what/ever', self.PackageExpected)
+        self._test_mock_dirwalk(self.GreekDirTree, '/some/where', self.GreekFilenames)
+        self._test_mock_dirwalk(self.PackageDirTree, '/what/ever', self.PackageFilenames)
 
     def _test_mock_dirwalk_tree(self, dirtree, root, includes, excludes, expected):
         with mock.patch('os.walk', MockDirWalk(dirtree)):
@@ -126,21 +143,21 @@ class TestFileUtils(TestCase):
     def test_mock_dirwalk_tree_no_filters(self):
         self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', None, None,
-            [f for f in self.PackageExpected])
+            [f for f in self.PackageFilenames])
 
     def test_mock_dirwalk_tree_exclude_test(self):
         self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', None, ['test_*'],
-            [f for f in self.PackageExpected if '/test_' not in f])
+            [f for f in self.PackageFilenames if '/test_' not in f])
 
     def test_mock_dirwalk_tree_include_py_md(self):
         self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', ['*.py', '*.md'], None,
-            [f for f in self.PackageExpected
+            [f for f in self.PackageFilenames
              if (f.endswith('.py') or f.endswith('.md'))])
 
     def test_mock_dirwalk_tree_include_py_md_exclude_test(self):
         self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', ['*.py', '*.md'], ['test_*'],
-            [f for f in self.PackageExpected
+            [f for f in self.PackageFilenames
             if (f.endswith('.py') or f.endswith('.md')) and '/test_' not in f])
