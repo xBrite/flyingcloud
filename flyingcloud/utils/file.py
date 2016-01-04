@@ -94,7 +94,7 @@ def walk_dir_tree(root, includes=None, excludes=None):
         '|'.join([fnmatch.translate(x) for x in includes])
         if includes else '.*')
     excludes_re = re.compile(
-        '|'.join([fnmatch.translate(x) for x in excludes])
+        "(^|/)" + '|'.join([fnmatch.translate(x) for x in excludes])
         if excludes else '$.')
 
     for top, dirnames, filenames in os.walk(root, topdown=True):

@@ -87,7 +87,8 @@ class TestFileUtils(TestCase):
                 'foo.py',
                 'foo.pyc',
                 'bar.py',
-                'bar.pyc'
+                'bar.pyc',
+                'protest_something.py'
             ]
         },
         {
@@ -119,6 +120,7 @@ class TestFileUtils(TestCase):
         "package/bar.pyc",
         "package/foo.py",
         "package/foo.pyc",
+        "package/protest_something.py",
         "package/utils/file.py",
         "package/utils/context_manager.py",
         "package.egg-info/PKG-INFO",
@@ -160,4 +162,11 @@ class TestFileUtils(TestCase):
         self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', ['*.py', '*.md'], ['test_*'],
             [f for f in self.PackageFilenames
-            if (f.endswith('.py') or f.endswith('.md')) and '/test_' not in f])
+             if (f.endswith('.py') or f.endswith('.md')) and '/test_' not in f])
+
+    def test_mock_dirwalk_tree_include_py_md_txt_exclude_test_egg_info(self):
+        self._test_mock_dirwalk_tree(
+            self.PackageDirTree, '.', ['*.py', '*.md', '*.txt'], ['test_*', '*.egg-info'],
+            [f for f in self.PackageFilenames
+             if (f.endswith('.py') or f.endswith('.md') or f.endswith('.txt'))
+                 and '/test_' not in f and '.egg-info/' not in f])
