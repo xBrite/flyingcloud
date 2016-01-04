@@ -34,6 +34,7 @@ class TestFileUtils(TestCase):
             for top, dirs, files in walker(root)
                 for f in files)
         self.assertEqual(set([os.path.join(root, e) for e in expected]), result)
+        return result
 
     GreekDirTree = [
         'alpha',
@@ -147,38 +148,52 @@ class TestFileUtils(TestCase):
         with mock.patch('os.walk', MockDirWalk(dirtree)):
             result = set(walk_dir_tree(root, includes, excludes))
         self.assertEqual(set([os.path.join(root, e) for e in expected]), result)
+        return result
 
     def test_mock_dirwalk_tree_no_filters(self):
-        self._test_mock_dirwalk_tree(
+        result = self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', None, None,
             [f for f in self.PackageFilenames])
 
     def test_mock_dirwalk_tree_exclude_test(self):
-        self._test_mock_dirwalk_tree(
+        result = self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', None, ['test_*'],
             [f for f in self.PackageFilenames if '/test_' not in f])
 
     def test_mock_dirwalk_tree_include_py_md(self):
-        self._test_mock_dirwalk_tree(
+        result = self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', ['*.py', '*.md'], None,
             [f for f in self.PackageFilenames
              if (f.endswith('.py') or f.endswith('.md'))])
 
     def test_mock_dirwalk_tree_include_quux_pyc(self):
-        self._test_mock_dirwalk_tree(
+        result = self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', ['quux*', '*.pyc'], None,
             [f for f in self.PackageFilenames
              if (('/quux' in f or f.startswith('quux'))  or f.endswith('.pyc'))])
+        self.assertIn('./quux.mk', result)
+        self.assertIn('./package/quux.rst', result)
+        self.assertNotIn('./zquux.lst', result)
 
     def test_mock_dirwalk_tree_include_py_md_exclude_test(self):
-        self._test_mock_dirwalk_tree(
+        result = self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', ['*.py', '*.md'], ['test_*'],
             [f for f in self.PackageFilenames
              if (f.endswith('.py') or f.endswith('.md')) and '/test_' not in f])
 
     def test_mock_dirwalk_tree_include_py_md_txt_exclude_test_egg_info(self):
-        self._test_mock_dirwalk_tree(
+        result = self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', ['*.py', '*.md', '*.txt'], ['test_*', '*.egg-info'],
             [f for f in self.PackageFilenames
              if (f.endswith('.py') or f.endswith('.md') or f.endswith('.txt'))
-                 and '/test_' not in f and '.egg-info/' not in f])
+             and '/test_' not in f and '.egg-info/' not in f])
+
+    def test_mock_dirwalk_tree_include_py_md_txt_exclude_test_utils_context(self):
+        # Check that '/' works in exclude patterns
+        result = self._test_mock_dirwalk_tree(
+            self.PackageDirTree, '.', ['*.py', '*.md'], ['test_*', 'utils/context_*'],
+            [f for f in self.PackageFilenames
+             if (f.endswith('.py') or f.endswith('.md'))
+                 and '/test_' not in f and 'utils/context_' not in f])
+        self.assertIn('./package/utils/file.py', result)
+        self.assertNotIn('./package/utils/context_manager.py', result)
