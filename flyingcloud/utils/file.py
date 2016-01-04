@@ -117,7 +117,7 @@ class MockDirWalk:
         self.dirtree = dirtree
 
     def __call__(self, top, topdown=True, onerror=None, followlinks=False):
-        "Emulate os.walk with `self.dirtree`"
+        """Emulate os.walk with `self.dirtree`"""
         return self.walk(self.dirtree, top, topdown)
 
     def walk(self, dirlist, top, topdown):

@@ -6,7 +6,7 @@ import mock
 
 from flyingcloud.utils import walk_dir_tree, abspath, PushDir, MockDirWalk
 
-PACKAGE_ROOT = abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+PACKAGE_ROOT = abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 THIS_FILE = os.path.splitext(__file__)[0] + '.py'  # Otherwise, sometimes ends in '.pyc'
 
 
@@ -22,8 +22,8 @@ class TestFileUtils(TestCase):
     def test_walk_dir_tree_relative(self):
         with PushDir(PACKAGE_ROOT):
             self._test_walk_dir_tree(
-                top=".",
-                this_file=os.path.join(".", os.path.relpath(THIS_FILE, PACKAGE_ROOT)))
+                top='.',
+                this_file=os.path.join('.', os.path.relpath(THIS_FILE, PACKAGE_ROOT)))
 
     def test_walk_dir_tree_absolute(self):
         self._test_walk_dir_tree(PACKAGE_ROOT, THIS_FILE)
@@ -112,27 +112,27 @@ class TestFileUtils(TestCase):
     ]
 
     PackageFilenames = [
-        "LICENSE",
-        "README.md",
-        "Changelog.txt",
-        "setup.py",
-        "setup.pyc",
-        "quux.mk",
-        "zquux.lst",
-        "package/__init__.py",
-        "package/__init__.pyc",
-        "package/bar.py",
-        "package/bar.pyc",
-        "package/foo.py",
-        "package/foo.pyc",
-        "package/protest_something.py",
-        "package/quux.rst",
-        "package/utils/file.py",
-        "package/utils/context_manager.py",
-        "package.egg-info/PKG-INFO",
-        "package.egg-info/SOURCES.txt",
-        "test/test_foo.py",
-        "test/test_bar.py",
+        'LICENSE',
+        'README.md',
+        'Changelog.txt',
+        'setup.py',
+        'setup.pyc',
+        'quux.mk',
+        'zquux.lst',
+        'package/__init__.py',
+        'package/__init__.pyc',
+        'package/bar.py',
+        'package/bar.pyc',
+        'package/foo.py',
+        'package/foo.pyc',
+        'package/protest_something.py',
+        'package/quux.rst',
+        'package/utils/file.py',
+        'package/utils/context_manager.py',
+        'package.egg-info/PKG-INFO',
+        'package.egg-info/SOURCES.txt',
+        'test/test_foo.py',
+        'test/test_bar.py',
     ]
 
     def test_mock_dirwalk_relative(self):
