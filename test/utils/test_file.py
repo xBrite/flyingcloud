@@ -181,6 +181,12 @@ class TestFileUtils(TestCase):
             [f for f in self.PackageFilenames
              if (f.endswith('.py') or f.endswith('.md')) and '/test_' not in f])
 
+    def test_mock_dirwalk_tree_include_py_md_exclude_non_existent(self):
+        result = self._test_mock_dirwalk_tree(
+            self.PackageDirTree, '.', ['*.py', '*.md'], ['not_here'],
+            [f for f in self.PackageFilenames
+             if (f.endswith('.py') or f.endswith('.md'))])
+
     def test_mock_dirwalk_tree_include_py_md_txt_exclude_test_egg_info(self):
         result = self._test_mock_dirwalk_tree(
             self.PackageDirTree, '.', ['*.py', '*.md', '*.txt'], ['test_*', '*.egg-info'],
