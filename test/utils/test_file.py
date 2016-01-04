@@ -74,6 +74,8 @@ class TestFileUtils(TestCase):
     PackageDirTree = [
         'LICENSE',
         'README.md',
+        'quux.mk',
+        'zquux.lst',
         {
             'package' : [
                 '__init__.py',
@@ -88,7 +90,8 @@ class TestFileUtils(TestCase):
                 'foo.pyc',
                 'bar.py',
                 'bar.pyc',
-                'protest_something.py'
+                'protest_something.py',
+                'quux.rst'
             ]
         },
         {
@@ -114,6 +117,8 @@ class TestFileUtils(TestCase):
         "Changelog.txt",
         "setup.py",
         "setup.pyc",
+        "quux.mk",
+        "zquux.lst",
         "package/__init__.py",
         "package/__init__.pyc",
         "package/bar.py",
@@ -121,6 +126,7 @@ class TestFileUtils(TestCase):
         "package/foo.py",
         "package/foo.pyc",
         "package/protest_something.py",
+        "package/quux.rst",
         "package/utils/file.py",
         "package/utils/context_manager.py",
         "package.egg-info/PKG-INFO",
@@ -157,6 +163,12 @@ class TestFileUtils(TestCase):
             self.PackageDirTree, '.', ['*.py', '*.md'], None,
             [f for f in self.PackageFilenames
              if (f.endswith('.py') or f.endswith('.md'))])
+
+    def test_mock_dirwalk_tree_include_quux_pyc(self):
+        self._test_mock_dirwalk_tree(
+            self.PackageDirTree, '.', ['quux*', '*.pyc'], None,
+            [f for f in self.PackageFilenames
+             if (('/quux' in f or f.startswith('quux'))  or f.endswith('.pyc'))])
 
     def test_mock_dirwalk_tree_include_py_md_exclude_test(self):
         self._test_mock_dirwalk_tree(
