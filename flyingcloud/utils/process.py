@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import logging
 import os
@@ -31,12 +31,12 @@ def run_command_using_sh(cmd, env, kwargs):
     try:
         output = command_runner(*command_args, _cwd=current_working_directory, _env=env, _out=command_stdout)
         retcode = output.exit_code
-    except sh.ErrorReturnCode, e:
-        print "sh e.stderr:{}".format(e.stderr)
+    except sh.ErrorReturnCode as e:
+        print("sh e.stderr:{}".format(e.stderr))
         retcode = 1
         command_stderr = e.stderr
-        print "command STDOUT:{}".format(command_stdout)
-        print "command STDOUT:{}".format(command_stderr)
+        print("command STDOUT:{}".format(command_stdout))
+        print("command STDOUT:{}".format(command_stderr))
     return command_stderr, command_stdout, retcode
 
 
