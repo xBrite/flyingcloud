@@ -291,12 +291,25 @@ class DockerBuildLayer(object):
         return namespace.docker.commit(container=container_id, repository=repo, tag=tag)
 
     @classmethod
+    def find_binary(cls, namespace, filename, search_paths=None):
+        if search_paths is None:
+            search_paths = [os.environ.get('VIRTUAL_ENV'), '/usr/local']
+            search_paths = [os.path.join(p, "bin") for p in search_paths if p]
+        for path in search_paths:
+            filepath = os.path.join(path, filename)
+            if os.path.exists(filepath):
+                return filepath
+        namespace.logger.info("Can't find '%s' in %s", filename, search_paths)
+        return None
+
+    @classmethod
     def docker_squash(cls, namespace, image_name, latest_image_name, squashed_image_name):
-        installation_prefix = os.environ.get('VIRTUAL_ENV', '/usr/local')
-        docker_squash_path = os.path.join(installation_prefix, 'bin', 'docker-squash')
-        if not os.path.exists(docker_squash_path):
-            namespace.logger.info("Can't find %s; not squashing", docker_squash_path)
+        docker_squash_path = cls.find_binary(namespace, 'docker-squash')
+        if docker_squash_path is None:
+            namespace.logger.info("Not squashing")
             return None
+        else:
+            namespace.logger.info("Using %s", docker_squash_path)
         docker_squash_cmd = sh.Command(docker_squash_path)
 
         cls.log_disk_usage(namespace)
