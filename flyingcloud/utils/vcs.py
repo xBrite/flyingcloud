@@ -2,12 +2,12 @@
 
 """Simple wrapper around Git and Mercurial."""
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import os
 import subprocess
 
-from flyingcloud.utils.process import run_command
+from .process import run_command
 
 
 class VCS(object):
@@ -19,7 +19,7 @@ class VCS(object):
 
     @classmethod
     def run_cmd(cls,params, cwd, one_liner=True, *args, **kwargs):
-#       print cls.Executable + params, "cwd=", self.root
+#       print(cls.Executable + params, "cwd=", self.root)
         rv = run_command(cls.Executable + params, cwd=cwd, log_errors=False, *args, **kwargs)
         return rv[0] if rv and one_liner else rv
 

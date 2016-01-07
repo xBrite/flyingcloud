@@ -3,7 +3,7 @@
 
 """Build an Application Bundle zipfile for Elastic Beanstalk deployment."""
 
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 
 import argparse
 import datetime
@@ -12,8 +12,8 @@ import json
 import os
 import zipfile
 
-from flyingcloud.utils.vcs import find_vcs
-from flyingcloud.utils.archive import abspath, zip_add_directory, zip_write_directory, check_zipfile
+from .vcs import find_vcs
+from .archive import abspath, zip_add_directory, zip_write_directory, check_zipfile
 
 
 VERSION = "0.2.1"
