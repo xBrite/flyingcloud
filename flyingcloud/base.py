@@ -249,9 +249,9 @@ class DockerBuildLayer(object):
         return namespace.docker.start(container_id)
 
     @classmethod
-    def docker_exec(cls, namespace, container_id, cmd, timeout=None):
+    def docker_exec(cls, namespace, container_id, cmd, timeout=None, raise_on_error=True):
         exec_id = cls.docker_exec_create(namespace, container_id, cmd)
-        return cls.docker_exec_start(namespace, exec_id, timeout)
+        return cls.docker_exec_start(namespace, exec_id, timeout, raise_on_error)
 
     @classmethod
     def docker_exec_create(cls, namespace, container_id, cmd):
@@ -260,7 +260,7 @@ class DockerBuildLayer(object):
         return exec_create['Id']
 
     @classmethod
-    def docker_exec_start(cls, namespace, exec_id, timeout=None):
+    def docker_exec_start(cls, namespace, exec_id, timeout=None, raise_on_error=True):
         timeout = timeout or namespace.timeout or cls.SaltExecTimeout
         # Use a distinct client with a custom timeout
         # (synchronous execs can last much longer than 60 seconds)
@@ -269,7 +269,7 @@ class DockerBuildLayer(object):
         full_output = cls.read_docker_output_stream(namespace, generator, "docker_exec")
         result = client.exec_inspect(exec_id=exec_id)
         exit_code = result['ExitCode']
-        if exit_code != 0:
+        if exit_code != 0 and raise_on_error:
             raise ExecError("docker_exec exit code was non-zero: {} (result: {})".format(exit_code, result))
         return result, full_output
 
