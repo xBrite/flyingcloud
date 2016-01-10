@@ -29,12 +29,11 @@ def walk_dir_tree(root, includes=None, excludes=None):
             d for d in dirnames
             if not excludes_re.search(os.path.join(top, d))]
         # filter filenames
-        pathnames = [os.path.join(top, f) for f in filenames
-                     if includes_re.match(f)]
-        pathnames = [p for p in pathnames if not excludes_re.search(p)]
-
-        for p in pathnames:
-            yield p
+        for f in filenames:
+            if includes_re.match(f):
+                pathname = os.path.join(top, f)
+                if not excludes_re.search(pathname):
+                    yield pathname
 
 
 class MockDirWalk:
