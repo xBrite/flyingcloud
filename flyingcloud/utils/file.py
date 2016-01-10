@@ -14,7 +14,7 @@ def abspath(path):
     return os.path.abspath(os.path.expanduser(path))
 
 
-def make_dir(target_dir, mode=0777):
+def make_dir(target_dir, mode=0o777):
     """Create (if needed) a directory with a certain file mode."""
     if os.path.exists(target_dir):
         if not os.path.isdir(target_dir):

@@ -249,9 +249,9 @@ class DockerBuildLayer(object):
         return namespace.docker.start(container_id)
 
     @classmethod
-    def docker_exec(cls, namespace, container_id, cmd, timeout=None):
+    def docker_exec(cls, namespace, container_id, cmd, timeout=None, raise_on_error=True):
         exec_id = cls.docker_exec_create(namespace, container_id, cmd)
-        return cls.docker_exec_start(namespace, exec_id, timeout)
+        return cls.docker_exec_start(namespace, exec_id, timeout, raise_on_error)
 
     @classmethod
     def docker_exec_create(cls, namespace, container_id, cmd):
@@ -260,7 +260,7 @@ class DockerBuildLayer(object):
         return exec_create['Id']
 
     @classmethod
-    def docker_exec_start(cls, namespace, exec_id, timeout=None):
+    def docker_exec_start(cls, namespace, exec_id, timeout=None, raise_on_error=True):
         timeout = timeout or namespace.timeout or cls.SaltExecTimeout
         # Use a distinct client with a custom timeout
         # (synchronous execs can last much longer than 60 seconds)
@@ -269,7 +269,7 @@ class DockerBuildLayer(object):
         full_output = cls.read_docker_output_stream(namespace, generator, "docker_exec")
         result = client.exec_inspect(exec_id=exec_id)
         exit_code = result['ExitCode']
-        if exit_code != 0:
+        if exit_code != 0 and raise_on_error:
             raise ExecError("docker_exec exit code was non-zero: {} (result: {})".format(exit_code, result))
         return result, full_output
 
@@ -291,12 +291,25 @@ class DockerBuildLayer(object):
         return namespace.docker.commit(container=container_id, repository=repo, tag=tag)
 
     @classmethod
+    def find_binary(cls, namespace, filename, search_paths=None):
+        if search_paths is None:
+            search_paths = [os.environ.get('VIRTUAL_ENV'), '/usr/local']
+            search_paths = [os.path.join(p, "bin") for p in search_paths if p]
+        for path in search_paths:
+            filepath = os.path.join(path, filename)
+            if os.path.exists(filepath):
+                return filepath
+        namespace.logger.info("Can't find '%s' in %s", filename, search_paths)
+        return None
+
+    @classmethod
     def docker_squash(cls, namespace, image_name, latest_image_name, squashed_image_name):
-        installation_prefix = os.environ.get('VIRTUAL_ENV', '/usr/local')
-        docker_squash_path = os.path.join(installation_prefix, 'bin', 'docker-squash')
-        if not os.path.exists(docker_squash_path):
-            namespace.logger.info("Can't find %s; not squashing", docker_squash_path)
+        docker_squash_path = cls.find_binary(namespace, 'docker-squash')
+        if docker_squash_path is None:
+            namespace.logger.info("Not squashing")
             return None
+        else:
+            namespace.logger.info("Using %s", docker_squash_path)
         docker_squash_cmd = sh.Command(docker_squash_path)
 
         cls.log_disk_usage(namespace)
