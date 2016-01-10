@@ -10,7 +10,7 @@ PACKAGE_ROOT = abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 THIS_FILE = os.path.splitext(__file__)[0] + '.py'  # Otherwise, sometimes ends in '.pyc'
 
 
-class TestFileUtils(TestCase):
+class TestWalkDirTree(TestCase):
     def _test_walk_dir_tree(self, top, this_file):
         # Walk a real file tree
         files = set(walk_dir_tree(top, ('*.py', '*.md'),
