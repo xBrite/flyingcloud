@@ -15,25 +15,48 @@ def walk_dir_tree(root, includes=None, excludes=None):
 
     Adapted (and fixed!) from http://stackoverflow.com/a/5141829/6364
     """
+    return walk_dir_tree_regex(
+        root,
+        fnmatch_includes_regex(includes),
+        fnmatch_excludes_regex(excludes))
+
+
+def fnmatch_includes_regex(includes=None):
     # Transform glob patterns to regular expressions
-    includes_re = re.compile(
+    return re.compile(
         '|'.join([fnmatch.translate(x) for x in includes])
         if includes else '.*')
-    excludes_re = re.compile(
+
+
+def fnmatch_excludes_regex(excludes=None):
+    return re.compile(
         '(^|/)' + '|'.join([fnmatch.translate(x) for x in excludes])
         if excludes else '$.')
 
+
+def walk_dir_tree_regex(root, includes_re, excludes_re):
     for top, dirnames, filenames in os.walk(root, topdown=True):
         # exclude directories by mutating `dirnames`
-        dirnames[:] = [
-            d for d in dirnames
+        dirnames[:] = filter_dirnames(top, dirnames, excludes_re)
+        for pathname in filter_filenames(
+                top, filenames, includes_re, excludes_re, as_filenames=False):
+            yield pathname
+
+
+def filter_dirnames(top, dirnames, excludes_re):
+    return [
+        d for d in dirnames
             if not excludes_re.search(os.path.join(top, d))]
-        # filter filenames
-        for f in filenames:
-            if includes_re.match(f):
-                pathname = os.path.join(top, f)
-                if not excludes_re.search(pathname):
-                    yield pathname
+
+
+def filter_filenames(top, filenames, includes_re, excludes_re, as_filenames=True):
+    result = []
+    for filename in filenames:
+        if includes_re.match(filename):
+            pathname = os.path.join(top, filename)
+            if not excludes_re.search(pathname):
+                result.append(filename if as_filenames else pathname)
+    return result
 
 
 class MockDirWalk:
