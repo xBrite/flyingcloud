@@ -120,11 +120,9 @@ def zip_package(namespace, exclude_dirs=None):
     if not namespace.dry_run:
         with zipfile.ZipFile(
                 namespace.zipfile_name, "w", zipfile.ZIP_DEFLATED) as zip_archive:
-            logger = print if namespace.verbose else lambda x: None
             zip_add_directory(
                 zip_archive, namespace.package_path,
-                exclude_dirs, exclude_extensions, exclude_filenames,
-                logger=logger)
+                exclude_dirs, exclude_extensions, exclude_filenames)
 
             # TODO: get rid of --aux-package and --packages.
             # Bootstrap's --make-local-packages supersedes them.
@@ -133,7 +131,7 @@ def zip_package(namespace, exclude_dirs=None):
                 zip_add_directory(
                     zip_archive, source_dir,
                     exclude_dirs=exclude_dirs, exclude_extensions=exclude_extensions,
-                    prefix_dir=prefix_dir, logger=logger)
+                    prefix_dir=prefix_dir)
 
             if namespace.packages:
                 module_path, func, target_dir = namespace.packages
@@ -151,9 +149,7 @@ def zip_package(namespace, exclude_dirs=None):
                     zip_archive,
                     target_dir,
                     dirpath,
-                    filenames,
-                    logger=logger
-                )
+                    filenames)
 
     check_zipfile(namespace.zipfile_name)
 
