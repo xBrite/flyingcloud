@@ -453,7 +453,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('base_dir', os.path.abspath(os.path.dirname(__file__)))
         defaults.setdefault('salt_dir', os.path.join(defaults['base_dir'], "salt"))
         defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "build_docker.log"))
-        defaults.setdefault('timestamp_format', '%Y-%m-%dT%H%M-%SZ')
+        defaults.setdefault('timestamp_format', '%Y-%m-%dT%H%M%SZ')
         defaults.setdefault(
             'timestamp', datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
         defaults.setdefault('squash_layer', True)
