@@ -121,7 +121,8 @@ class DockerBuildLayer(object):
 
         self.initialize_build(namespace, salt_dir)
 
-        self.docker_pull(namespace, self.source_image_name)
+        if self.source_image_name:
+            self.docker_pull(namespace, self.source_image_name)
 
         container_name = self.salt_highstate(
             namespace, self.ContainerName,
