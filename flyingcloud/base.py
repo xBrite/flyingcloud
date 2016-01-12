@@ -47,6 +47,10 @@ class ExecError(FlyingCloudError):
     """Failure to run a command in Docker container"""
 
 
+class DockerResultError(FlyingCloudError):
+    """Error in result from Docker Daemon"""
+
+
 class DockerBuildLayer(object):
     """Build a Docker image using SaltStack
 
@@ -175,7 +179,6 @@ class DockerBuildLayer(object):
             duration = round(time.time() - start_time)
             namespace.logger.info(
                 "Finished Salting: duration=%d:%02d minutes", duration // 60, duration % 60)
-            namespace.logger.debug("%r", salt_output)
             if self.salt_error(salt_output):
                 raise ExecError("salt_highstate failed.")
 
@@ -194,7 +197,7 @@ class DockerBuildLayer(object):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
         for line in namespace.docker.build(tag=tag, path=namespace.base_dir,
                                            dockerfile=dockerfile, fileobj=fileobj):
-            namespace.logger.debug("%s", line)
+            namespace.logger.debug("%s", line.rstrip('\r\n'))
 
     @classmethod
     def docker_create_container(
@@ -278,14 +281,16 @@ class DockerBuildLayer(object):
 
     @classmethod
     def read_docker_output_stream(cls, namespace, generator, logger_prefix):
-        line = ''
         full_output = []
         for chunk in generator:
-            line += chunk
             full_output.append(chunk)
-            if line.endswith('\n'):
-                namespace.logger.debug("%s: %s", logger_prefix, line.rstrip('\n'))
-                line = ''
+            try:
+                data = json.loads(chunk)
+            except ValueError:
+                data = chunk.rstrip('\r\n')
+            namespace.logger.debug("%s: %s", logger_prefix, data)
+            if isinstance(data, dict) and 'error' in data:
+                raise DockerResultError("Error: {!r}".format(data))
         return '\n'.join(full_output)
 
     @classmethod
