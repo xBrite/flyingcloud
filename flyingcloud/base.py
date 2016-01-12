@@ -28,20 +28,23 @@ STREAMING_CHUNK_SIZE = (1 << 20)
 # - do a better job of logging container-ids and image-ids
 # - unit tests, using a mock docker-py
 
-class EnvironmentVarError(Exception):
-    pass
+class FlyingCloudError(Exception):
+    """Base error"""
+
+class EnvironmentVarError(FlyingCloudError):
+    """Missing environment variable"""
 
 
-class NotSudoError(Exception):
-    pass
+class NotSudoError(FlyingCloudError):
+    """Not running as root"""
 
 
-class CommandError(Exception):
-    pass
+class CommandError(FlyingCloudError):
+    """Command failure"""
 
 
-class ExecError(Exception):
-    pass
+class ExecError(FlyingCloudError):
+    """Failure to run a command in Docker container"""
 
 
 class DockerBuildLayer(object):
