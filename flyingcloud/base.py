@@ -126,7 +126,7 @@ class DockerBuildLayer(object):
 
         container_name = self.salt_highstate(
             namespace, self.ContainerName,
-            source_image_name=self.source_image_name,
+            source_image_name=self.source_image_name or self.ImageName,
             result_image_name=self.layer_timestamp_name,
             salt_dir=salt_dir)
         layer_strong_name = None
