@@ -186,6 +186,8 @@ class DockerBuildLayer(object):
 
             result = self.docker_commit(namespace, container_name, result_image_name)
             namespace.logger.info("Committed: %r", result)
+        except:
+            namespace.logger.exception("Salting failed")
         finally:
             self.docker_cleanup(namespace, container_name)
         return container_name
@@ -216,8 +218,8 @@ class DockerBuildLayer(object):
             "Tags for image '%s': %s",
             image_name, cls.docker_tags_for_image(namespace, image_name))
         container = namespace.docker.create_container(
-            name=container_name,
             image=image_name,
+            name=container_name,
             environment=environment,
             detach=detach,
             **cls.docker_volumes(namespace, volume_map))
@@ -238,7 +240,7 @@ class DockerBuildLayer(object):
     @classmethod
     def docker_tags_for_image(cls, namespace, image_name):
         parts = image_name.split('/')
-        if parts:
+        if len(parts) == 3:
             url = "https://{0}/v1/repositories/{1}/{2}/tags".format(
                 parts[0], parts[1], parts[2].split(':')[0])
             r = requests.get(url, auth=(namespace.username, namespace.password))
