@@ -65,8 +65,9 @@ class DockerBuildLayer(object):
     AppName = None
     LayerName = None
     Description = None
-    SquashLayer = False
+    PullLayer = True
     PushLayer = False
+    SquashLayer = False
     LayerSuffix = None
     SourceImageName = None
     TargetImageName = None  # usually tagged with ":latest"
@@ -121,7 +122,7 @@ class DockerBuildLayer(object):
 
         self.initialize_build(namespace, salt_dir)
 
-        if self.source_image_name:
+        if self.PullLayer:
             self.docker_pull(namespace, self.source_image_name)
 
         container_name = self.salt_highstate(
