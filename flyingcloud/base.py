@@ -401,31 +401,31 @@ class DockerBuildLayer(object):
 
     @classmethod
     def docker_pull(cls, namespace, image_name):
-        for attempt in range(1, namespace.retries+1):
-            try:
-                namespace.logger.info("docker_pull %s", image_name)
-                repo, tag = cls.image_name2repo_tag(image_name)
-                generator = namespace.docker.pull(repository=repo, tag=tag, stream=True)
-                return cls.read_docker_output_stream(namespace, generator, "docker_pull")
-            except DockerResultError as e:
-                if attempt == namespace.retries:
-                    raise
-        else:
-            pass
+        return cls._docker_push_pull(namespace, image_name, "pull")
 
     @classmethod
     def docker_push(cls, namespace, image_name):
+        return cls._docker_push_pull(namespace, image_name, "push")
+
+    @classmethod
+    def _docker_push_pull(cls, namespace, image_name, verb):
+        give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
+            verb, image_name, namespace.retries)
         for attempt in range(1, namespace.retries+1):
             try:
-                namespace.logger.info("docker_push %s", image_name)
+                namespace.logger.info("docker_%s %s, attempt %d/%d",
+                                      verb, image_name, attempt, namespace.retries)
                 repo, tag = cls.image_name2repo_tag(image_name)
-                generator = namespace.docker.push(repository=repo, tag=tag, stream=True)
-                return  cls.read_docker_output_stream(namespace, generator, "docker_push")
-            except DockerResultError as e:
+                method = getattr(namespace.docker, verb)
+                generator = method(repository=repo, tag=tag, stream=True)
+                return cls.read_docker_output_stream(
+                    namespace, generator, "docker_{}".format(verb))
+            except DockerResultError:
                 if attempt == namespace.retries:
+                    namespace.logger.info("%s", give_up_message)
                     raise
         else:
-            pass
+            raise DockerResultError(give_up_message)
 
     @classmethod
     def docker_login(cls, namespace):
