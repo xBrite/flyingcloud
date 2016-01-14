@@ -198,7 +198,13 @@ class DockerBuildLayer(object):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
         for line in namespace.docker.build(tag=tag, path=namespace.base_dir,
                                            dockerfile=dockerfile, fileobj=fileobj):
-            namespace.logger.debug("%s", line.rstrip('\r\n'))
+            line =  line.rstrip('\r\n')
+            namespace.logger.debug("%s", line)
+        # Grrr! Why doesn't docker-py handle this for us?
+        match = re.search(r'Successfully built ([0-9a-f]+)', line)
+        image_id = match and match.group(1)
+        namespace.logger.info("Built tag=%s, image_id=%s", tag, image_id)
+        return image_id
 
     @classmethod
     def docker_create_container(
