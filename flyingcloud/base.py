@@ -401,18 +401,31 @@ class DockerBuildLayer(object):
 
     @classmethod
     def docker_pull(cls, namespace, image_name):
-        namespace.logger.info("docker_pull %s", image_name)
-        repo, tag = cls.image_name2repo_tag(image_name)
-        generator = namespace.docker.pull(repository=repo, tag=tag, stream=True)
-        full_output = cls.read_docker_output_stream(namespace, generator, "docker_pull")
+        for attempt in range(1, namespace.retries+1):
+            try:
+                namespace.logger.info("docker_pull %s", image_name)
+                repo, tag = cls.image_name2repo_tag(image_name)
+                generator = namespace.docker.pull(repository=repo, tag=tag, stream=True)
+                return cls.read_docker_output_stream(namespace, generator, "docker_pull")
+            except DockerResultError as e:
+                if attempt == namespace.retries:
+                    raise
+        else:
+            pass
 
     @classmethod
     def docker_push(cls, namespace, image_name):
-        namespace.logger.info("docker_push %s", image_name)
-        repo, tag = cls.image_name2repo_tag(image_name)
-        generator = namespace.docker.push(repository=repo, tag=tag, stream=True)
-        full_output = cls.read_docker_output_stream(namespace, generator, "docker_push")
-        # TODO: raise on error
+        for attempt in range(1, namespace.retries+1):
+            try:
+                namespace.logger.info("docker_push %s", image_name)
+                repo, tag = cls.image_name2repo_tag(image_name)
+                generator = namespace.docker.push(repository=repo, tag=tag, stream=True)
+                return  cls.read_docker_output_stream(namespace, generator, "docker_push")
+            except DockerResultError as e:
+                if attempt == namespace.retries:
+                    raise
+        else:
+            pass
 
     @classmethod
     def docker_login(cls, namespace):
@@ -464,10 +477,10 @@ class DockerBuildLayer(object):
             'timestamp', datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('push_layer', True)
+        defaults.setdefault('retries', 3)
 
-        parser.set_defaults(
-            **defaults
-        )
+        parser.set_defaults(**defaults)
+
         parser.add_argument(
             '--timeout', '-t', type=int, default=cls.DefaultTimeout,
             help="Docker client timeout in seconds. Default: %(default)s")
@@ -477,6 +490,10 @@ class DockerBuildLayer(object):
         parser.add_argument(
             '--no-push', '-P', dest='push_layer', action='store_false',
             help="Do not push Docker layers")
+        parser.add_argument(
+            '--retries', '-R', dest='retries', type=int,
+            help="How often to retry remote Docker operations, such as push/pull. "
+                 "Default: %(default)s")
         parser.add_argument(
             '--debug', '-D', dest='debug', action='store_true',
             help="Set terminal logging level to debug")
