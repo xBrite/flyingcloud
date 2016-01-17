@@ -28,20 +28,27 @@ STREAMING_CHUNK_SIZE = (1 << 20)
 # - do a better job of logging container-ids and image-ids
 # - unit tests, using a mock docker-py
 
-class EnvironmentVarError(Exception):
-    pass
+class FlyingCloudError(Exception):
+    """Base error"""
+
+class EnvironmentVarError(FlyingCloudError):
+    """Missing environment variable"""
 
 
-class NotSudoError(Exception):
-    pass
+class NotSudoError(FlyingCloudError):
+    """Not running as root"""
 
 
-class CommandError(Exception):
-    pass
+class CommandError(FlyingCloudError):
+    """Command failure"""
 
 
-class ExecError(Exception):
-    pass
+class ExecError(FlyingCloudError):
+    """Failure to run a command in Docker container"""
+
+
+class DockerResultError(FlyingCloudError):
+    """Error in result from Docker Daemon"""
 
 
 class DockerBuildLayer(object):
@@ -58,8 +65,9 @@ class DockerBuildLayer(object):
     AppName = None
     LayerName = None
     Description = None
-    SquashLayer = False
+    PullLayer = True
     PushLayer = False
+    SquashLayer = False
     LayerSuffix = None
     SourceImageName = None
     TargetImageName = None  # usually tagged with ":latest"
@@ -83,7 +91,8 @@ class DockerBuildLayer(object):
         namespace.logger.info("Build starting...")
         cls.log_disk_usage(namespace)
         cls.docker_info(namespace)
-        namespace.func(namespace)
+        if namespace.layer_cls.should_build(namespace):
+            namespace.func(namespace)
         namespace.logger.info("Build finished")
 
     def __init__(self):
@@ -97,6 +106,10 @@ class DockerBuildLayer(object):
         # These require the command-line args to properly initialize
         self.layer_latest_name = self.layer_timestamp_name = self.layer_squashed_name = None
         self.source_image_name = self.SourceImageName
+
+    @classmethod
+    def should_build(cls, namespace):
+        return True
 
     def initialize_build(self, namespace, salt_dir):
         """Override if you need special handling"""
@@ -114,11 +127,12 @@ class DockerBuildLayer(object):
 
         self.initialize_build(namespace, salt_dir)
 
-        self.docker_pull(namespace, self.source_image_name)
+        if self.PullLayer:
+            self.docker_pull(namespace, self.source_image_name)
 
         container_name = self.salt_highstate(
             namespace, self.ContainerName,
-            source_image_name=self.source_image_name,
+            source_image_name=self.source_image_name or self.ImageName,
             result_image_name=self.layer_timestamp_name,
             salt_dir=salt_dir)
         layer_strong_name = None
@@ -172,12 +186,13 @@ class DockerBuildLayer(object):
             duration = round(time.time() - start_time)
             namespace.logger.info(
                 "Finished Salting: duration=%d:%02d minutes", duration // 60, duration % 60)
-            namespace.logger.debug("%r", salt_output)
             if self.salt_error(salt_output):
                 raise ExecError("salt_highstate failed.")
 
             result = self.docker_commit(namespace, container_name, result_image_name)
             namespace.logger.info("Committed: %r", result)
+        except:
+            namespace.logger.exception("Salting failed")
         finally:
             self.docker_cleanup(namespace, container_name)
         return container_name
@@ -191,7 +206,13 @@ class DockerBuildLayer(object):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
         for line in namespace.docker.build(tag=tag, path=namespace.base_dir,
                                            dockerfile=dockerfile, fileobj=fileobj):
+            line =  line.rstrip('\r\n')
             namespace.logger.debug("%s", line)
+        # Grrr! Why doesn't docker-py handle this for us?
+        match = re.search(r'Successfully built ([0-9a-f]+)', line)
+        image_id = match and match.group(1)
+        namespace.logger.info("Built tag=%s, image_id=%s", tag, image_id)
+        return image_id
 
     @classmethod
     def docker_create_container(
@@ -202,8 +223,8 @@ class DockerBuildLayer(object):
             "Tags for image '%s': %s",
             image_name, cls.docker_tags_for_image(namespace, image_name))
         container = namespace.docker.create_container(
-            name=container_name,
             image=image_name,
+            name=container_name,
             environment=environment,
             detach=detach,
             **cls.docker_volumes(namespace, volume_map))
@@ -224,7 +245,7 @@ class DockerBuildLayer(object):
     @classmethod
     def docker_tags_for_image(cls, namespace, image_name):
         parts = image_name.split('/')
-        if parts:
+        if len(parts) == 3:
             url = "https://{0}/v1/repositories/{1}/{2}/tags".format(
                 parts[0], parts[1], parts[2].split(':')[0])
             r = requests.get(url, auth=(namespace.username, namespace.password))
@@ -275,14 +296,16 @@ class DockerBuildLayer(object):
 
     @classmethod
     def read_docker_output_stream(cls, namespace, generator, logger_prefix):
-        line = ''
         full_output = []
         for chunk in generator:
-            line += chunk
             full_output.append(chunk)
-            if line.endswith('\n'):
-                namespace.logger.debug("%s: %s", logger_prefix, line.rstrip('\n'))
-                line = ''
+            try:
+                data = json.loads(chunk)
+            except ValueError:
+                data = chunk.rstrip('\r\n')
+            namespace.logger.debug("%s: %s", logger_prefix, data)
+            if isinstance(data, dict) and 'error' in data:
+                raise DockerResultError("Error: {!r}".format(data))
         return '\n'.join(full_output)
 
     @classmethod
@@ -392,18 +415,31 @@ class DockerBuildLayer(object):
 
     @classmethod
     def docker_pull(cls, namespace, image_name):
-        namespace.logger.info("docker_pull %s", image_name)
-        repo, tag = cls.image_name2repo_tag(image_name)
-        generator = namespace.docker.pull(repository=repo, tag=tag, stream=True)
-        full_output = cls.read_docker_output_stream(namespace, generator, "docker_pull")
+        return cls._docker_push_pull(namespace, image_name, "pull")
 
     @classmethod
     def docker_push(cls, namespace, image_name):
-        namespace.logger.info("docker_push %s", image_name)
-        repo, tag = cls.image_name2repo_tag(image_name)
-        generator = namespace.docker.push(repository=repo, tag=tag, stream=True)
-        full_output = cls.read_docker_output_stream(namespace, generator, "docker_push")
-        # TODO: raise on error
+        return cls._docker_push_pull(namespace, image_name, "push")
+
+    @classmethod
+    def _docker_push_pull(cls, namespace, image_name, verb):
+        give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
+            verb, image_name, namespace.retries)
+        for attempt in range(1, namespace.retries+1):
+            try:
+                namespace.logger.info("docker_%s %s, attempt %d/%d",
+                                      verb, image_name, attempt, namespace.retries)
+                repo, tag = cls.image_name2repo_tag(image_name)
+                method = getattr(namespace.docker, verb)
+                generator = method(repository=repo, tag=tag, stream=True)
+                return cls.read_docker_output_stream(
+                    namespace, generator, "docker_{}".format(verb))
+            except DockerResultError:
+                if attempt == namespace.retries:
+                    namespace.logger.info("%s", give_up_message)
+                    raise
+        else:
+            raise DockerResultError(give_up_message)
 
     @classmethod
     def docker_login(cls, namespace):
@@ -450,15 +486,16 @@ class DockerBuildLayer(object):
         defaults.setdefault('base_dir', os.path.abspath(os.path.dirname(__file__)))
         defaults.setdefault('salt_dir', os.path.join(defaults['base_dir'], "salt"))
         defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "build_docker.log"))
-        defaults.setdefault('timestamp_format', '%Y-%m-%dT%H%M-%SZ')
+        defaults.setdefault('timestamp_format', '%Y-%m-%dt%H%M%Sz')
         defaults.setdefault(
             'timestamp', datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('push_layer', True)
+        defaults.setdefault('retries', 3)
+        defaults.setdefault('layer_cls', cls)
 
-        parser.set_defaults(
-            **defaults
-        )
+        parser.set_defaults(**defaults)
+
         parser.add_argument(
             '--timeout', '-t', type=int, default=cls.DefaultTimeout,
             help="Docker client timeout in seconds. Default: %(default)s")
@@ -469,6 +506,10 @@ class DockerBuildLayer(object):
             '--no-push', '-P', dest='push_layer', action='store_false',
             help="Do not push Docker layers")
         parser.add_argument(
+            '--retries', '-R', dest='retries', type=int,
+            help="How often to retry remote Docker operations, such as push/pull. "
+                 "Default: %(default)s")
+        parser.add_argument(
             '--debug', '-D', dest='debug', action='store_true',
             help="Set terminal logging level to debug")
         subparsers = parser.add_subparsers(help="sub-command")
@@ -477,6 +518,7 @@ class DockerBuildLayer(object):
             subparser = subparsers.add_parser(
                 layer_cls.CommandName, help=layer_cls.Description)
             subparser.set_defaults(
+                layer_cls=layer_cls,
                 func=layer_cls().build)
             layer_cls.add_parser_options(subparser)
 
