@@ -91,7 +91,8 @@ class DockerBuildLayer(object):
         namespace.logger.info("Build starting...")
         cls.log_disk_usage(namespace)
         cls.docker_info(namespace)
-        namespace.func(namespace)
+        if namespace.layer_cls.should_build(namespace):
+            namespace.func(namespace)
         namespace.logger.info("Build finished")
 
     def __init__(self):
@@ -105,6 +106,10 @@ class DockerBuildLayer(object):
         # These require the command-line args to properly initialize
         self.layer_latest_name = self.layer_timestamp_name = self.layer_squashed_name = None
         self.source_image_name = self.SourceImageName
+
+    @classmethod
+    def should_build(cls, namespace):
+        return True
 
     def initialize_build(self, namespace, salt_dir):
         """Override if you need special handling"""
@@ -487,6 +492,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('push_layer', True)
         defaults.setdefault('retries', 3)
+        defaults.setdefault('layer_cls', cls)
 
         parser.set_defaults(**defaults)
 
@@ -512,6 +518,7 @@ class DockerBuildLayer(object):
             subparser = subparsers.add_parser(
                 layer_cls.CommandName, help=layer_cls.Description)
             subparser.set_defaults(
+                layer_cls=layer_cls,
                 func=layer_cls().build)
             layer_cls.add_parser_options(subparser)
 
