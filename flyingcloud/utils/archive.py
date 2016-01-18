@@ -90,20 +90,24 @@ def zip_add_directory(
     """Recursively add a directory tree to `zip_archive`."""
     exclude_dirs = exclude_dirs or []
     exclude_filenames = exclude_filenames or []
-    exclude_extensions = ['*.'+ext for ext in (exclude_extensions or ())]
+    exclude_extensions = ['*'+ext for ext in (exclude_extensions or ())]
     relroot = abspath(os.path.join(source_dir, "."))
     logger.info("zip_add_directory: exclude_dirs={!r}, exclude_extensions={!r}, exclude_filenames={!r}".format(
         exclude_dirs, exclude_extensions, exclude_filenames))
     includes_re = fnmatch_includes_regex(None)
     excludes_re = fnmatch_excludes_regex(
         list(exclude_dirs) + list(exclude_filenames) + list(exclude_extensions))
+    logger.debug("excludes_re=%s", excludes_re.pattern)
+
 
     for top, dirnames, filenames in os.walk(source_dir, topdown=True):
-        logger.info("zip: top={0!r}, dirnames={1!r}, filenames={2!r}".format(
+        logger.debug("zip: top={0!r}, dirnames={1!r}, filenames={2!r}".format(
             top, dirnames, filenames))
         dirnames[:] = filter_dirnames(top, dirnames, excludes_re)
         filenames = filter_filenames(
             top, filenames, includes_re, excludes_re, as_filenames=True)
+        logger.debug("zip: >> dirnames={1!r}, filenames={2!r}".format(
+            top, dirnames, filenames))
         arcdir = os.path.join(
             prefix_dir or '', os.path.relpath(top, relroot))
         zip_write_directory(

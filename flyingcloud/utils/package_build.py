@@ -9,6 +9,7 @@ import argparse
 import datetime
 import imp
 import json
+import logging
 import os
 import zipfile
 
@@ -167,5 +168,6 @@ def package_build(args=None, exclude_dirs=None):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     zipfile_name = package_build()
     print(zipfile_name)  # For capture by calling scripts
