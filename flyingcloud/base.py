@@ -193,6 +193,7 @@ class DockerBuildLayer(object):
             namespace.logger.info("Committed: %r", result)
         except:
             namespace.logger.exception("Salting failed")
+            raise
         finally:
             self.docker_cleanup(namespace, container_name)
         return container_name
