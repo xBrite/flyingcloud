@@ -31,13 +31,13 @@ Contributing
 
 
 We welcome contributions. This project is in an early stage and under heavy development. 
-To contribute, contact the developers directly:
+To contribute, submit a pull request, or contact the developers directly:
 
-* Adam Feuer <adam@cookbrite.com>
-* George Reilly <george@cookbrite.com>
+* Adam Feuer <adam@metabrite.com>
+* George Reilly <george@metabrite.com>
 
 =======
 License
 =======
 
-* [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0)
+* `Apache License v2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_
