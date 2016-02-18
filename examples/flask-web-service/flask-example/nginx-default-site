@@ -1,0 +1,10 @@
+server {
+    listen 80;
+    server_name *.cookbrite.com;
+    charset utf-8;
+
+    location / {
+        uwsgi_pass unix:///tmp/uwsgi.sock;
+        include uwsgi_params;
+    }
+}
