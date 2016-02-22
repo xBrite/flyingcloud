@@ -11,7 +11,17 @@ setup(
     license='Apache Software License 2.0',
     url='https://github.com/cookbrite/flyingcloud',
     packages=find_packages(exclude='tests'),
-    install_requires=['docker-py', 'requests', 'sh', 'six'],
+    install_requires=[
+        'boto',
+        'boto3',
+        'docker-py',
+        'jinja2',
+        'jmespath',
+        'requests',
+        'sh',
+        'six'
+    ],
+
     classifiers=['Programming Language :: Python',
         'Programming Language :: Python :: 2.7',
         'Development Status :: 3 - Alpha',
