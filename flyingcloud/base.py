@@ -351,8 +351,8 @@ class DockerBuildLayer(object):
             output_temp.close()
             namespace.logger.info("Squashing '%s' (%d bytes) to '%s'",
                                   input_temp.name, os.path.getsize(input_temp.name), output_temp.name)
-            docker_squash_cmd("-i", input_temp.name, "-o", output_temp.name, "-t", latest_image_name,
-                              "-from", "root")
+            docker_squash_cmd(["-i", input_temp.name, "-o", output_temp.name, "-t", latest_image_name,
+                               "-from", "root"])
             output_temp = open(output_temp.name, 'rb')
 
             # docker load tar2
