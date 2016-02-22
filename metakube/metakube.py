@@ -20,7 +20,7 @@ from boto.route53 import connect_to_region
 from jinja2 import Environment, FileSystemLoader
 
 import route53
-from elb import AwsIngressMixin
+from aws_ingress_mixin import AwsIngressMixin
 
 # TODO
 # - make delete really work
