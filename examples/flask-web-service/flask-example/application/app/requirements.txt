@@ -1,8 +1,6 @@
-contexttimer
 flask
+numpy
 # opencv2
 pillow
 requests
 uwsgi
-
-
