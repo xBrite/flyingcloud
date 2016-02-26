@@ -1,8 +1,7 @@
 contexttimer
 flask
-numpy
-matplotlib
 # opencv2
+pillow
 requests
 uwsgi
 

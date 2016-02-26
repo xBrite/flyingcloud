@@ -9,6 +9,8 @@ import os
 from StringIO import StringIO
 from logging.handlers import RotatingFileHandler
 
+import cv2
+from PIL import Image
 from flask import Flask, make_response, request, send_from_directory, jsonify, render_template, send_file
 
 
@@ -94,10 +96,8 @@ def index(name=None):
 
 
 @app.route('/canny')
-def fig():
+def canny():
     # adapted from https://opencv-python-tutroals.readthedocs.org/en/latest/py_tutorials/py_imgproc/py_canny/py_canny.html#canny
-    import cv2
-    from PIL import Image
     img = cv2.imread('static/img/ship.jpg', 0)
     edges = cv2.Canny(img, 100, 200)
     im = Image.fromarray(edges)
