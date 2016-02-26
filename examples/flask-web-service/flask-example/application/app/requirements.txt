@@ -1,5 +1,9 @@
 contexttimer
 flask
+numpy
+matplotlib
+# opencv2
 requests
 uwsgi
+
 

@@ -6,18 +6,10 @@ from __future__ import unicode_literals, print_function
 import json
 import logging
 import os
-from datetime import datetime
-from functools import wraps
+from StringIO import StringIO
 from logging.handlers import RotatingFileHandler
-from urlparse import urlparse
 
-import requests
-import simpleflake
-from contexttimer import Timer
-from flask import Flask, make_response, request, send_from_directory, redirect, jsonify, render_template
-from py2neo import authenticate, Graph
-from werkzeug import secure_filename
-from werkzeug.contrib.cache import SimpleCache
+from flask import Flask, make_response, request, send_from_directory, jsonify, render_template, send_file
 
 
 def configure_logging():
@@ -99,6 +91,27 @@ def send_web(path):
 @app.route('/')
 def index(name=None):
     return render_template('index.html', name=name)
+
+
+@app.route('/canny')
+def fig():
+    # adapted from https://opencv-python-tutroals.readthedocs.org/en/latest/py_tutorials/py_imgproc/py_canny/py_canny.html#canny
+    import cv2
+    import numpy as np
+    from matplotlib import pyplot as plt
+
+    img = cv2.imread('ship.jpg', 0)
+    edges = cv2.Canny(img, 100, 200)
+
+    plt.subplot(121), plt.imshow(img, cmap='gray')
+    plt.title('Original Image'), plt.xticks([]), plt.yticks([])
+    plt.subplot(122), plt.imshow(edges, cmap='gray')
+    plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
+
+    img2 = StringIO()
+    plt.savefig(img2)
+    img2.seek(0)
+    return send_file(img2, mimetype='image/png')
 
 
 @app.errorhandler(500)
