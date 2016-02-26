@@ -97,19 +97,12 @@ def index(name=None):
 def fig():
     # adapted from https://opencv-python-tutroals.readthedocs.org/en/latest/py_tutorials/py_imgproc/py_canny/py_canny.html#canny
     import cv2
-    import numpy as np
-    from matplotlib import pyplot as plt
-
-    img = cv2.imread('ship.jpg', 0)
+    from PIL import Image
+    img = cv2.imread('static/img/ship.jpg', 0)
     edges = cv2.Canny(img, 100, 200)
-
-    plt.subplot(121), plt.imshow(img, cmap='gray')
-    plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-    plt.subplot(122), plt.imshow(edges, cmap='gray')
-    plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
-
+    im = Image.fromarray(edges)
     img2 = StringIO()
-    plt.savefig(img2)
+    im.save(img2, format="png")
     img2.seek(0)
     return send_file(img2, mimetype='image/png')
 
