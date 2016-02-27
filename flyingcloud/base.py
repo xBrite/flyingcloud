@@ -4,6 +4,7 @@
 
 import argparse
 import datetime
+import glob
 import json
 import tempfile
 
@@ -163,10 +164,17 @@ class DockerBuildLayer(object):
             namespace.logger.info("Not pushing Docker layers.")
         return layer_strong_name
 
+    def salt_states_exist(self, salt_dir):
+        files = glob.glob(os.path.join(salt_dir, '*.sls'))
+        return len(files)
+
     def salt_highstate(
             self, namespace, container_name, source_image_name, result_image_name,
             salt_dir, timeout=SaltExecTimeout):
         """Use SaltStack to configure container"""
+        if not self.salt_states_exist(salt_dir):
+            namespace.logger.info("No salt states found, not salting.")
+            return None
         namespace.logger.info(
             "Starting salt_highstate: source_image_name=%s, container_name=%s, salt_dir=%s",
             source_image_name, container_name, salt_dir)

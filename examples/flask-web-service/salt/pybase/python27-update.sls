@@ -32,3 +32,8 @@ python-virtualenv:
   pip.installed:
     - name: 'virtualenv'
     - use_wheel: true
+
+app_venv:
+  virtualenv.managed:
+    - name: /venv
+
