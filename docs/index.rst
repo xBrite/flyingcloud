@@ -6,7 +6,12 @@
 Welcome to FlyingCloud's documentation!
 =======================================
 
-Contents:
+FlyingCloud is a Python library and set of tools
+that lets you build Docker_ images using masterless SaltStack_.
+
+
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
@@ -20,3 +25,7 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+.. _Docker: 
+    http://docker.com
+.. _SaltStack:
+    http://saltstack.com/
