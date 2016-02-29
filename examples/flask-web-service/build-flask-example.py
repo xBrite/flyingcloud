@@ -79,16 +79,7 @@ class FlaskExampleLayer(ExampleBuildLayer):
     TargetImagePrefixName = "{}/{}/{}_{}".format(
             ExampleBuildLayer.Registry, ExampleBuildLayer.Organization, ExampleBuildLayer.AppName, CommandName)
     TargetImageName = TargetImagePrefixName + ":latest"
-    Dockerfile = """
-            FROM {}
-            EXPOSE 80
-    """.format(SourceImageName)
-
-    def initialize_build(self, namespace, salt_dir):
-        # expose ports via Dockerfile
-        # TODO: autoexpose
-        fileobj = BytesIO(self.Dockerfile.encode('utf-8'))
-        self.build_dockerfile(namespace, self.layer_timestamp_name, fileobj=fileobj)
+    ExposedPorts = [80]
 
 
 class FlaskExampleTestLayer(ExampleBuildLayer):
