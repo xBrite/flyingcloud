@@ -9,6 +9,9 @@ from io import BytesIO
 from flyingcloud import DockerBuildLayer
 
 
+# TODO
+# - fail if layer config dir is not present
+
 class BuildFlaskExampleError(Exception):
     pass
 
@@ -68,7 +71,7 @@ class OpenCvLayer(ExampleBuildLayer):
 
 
 class FlaskExampleLayer(ExampleBuildLayer):
-    CommandName = 'flask_example'
+    CommandName = 'app'
     Description = 'Build Flask Example app'
     LayerSuffix = CommandName
     SaltStateDir = LayerSuffix
