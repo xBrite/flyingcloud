@@ -18,6 +18,7 @@ class ExampleBuildLayer(DockerBuildLayer):
     RegistryDockerVersion = "1.17"
     Organization = 'cookbrite'
     AppName = 'flaskexample'
+    LoginRequired = False
 
     # TODO: reconsider these
     SquashLayer = False

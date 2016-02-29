@@ -62,6 +62,7 @@ class DockerBuildLayer(object):
     # Override these as necessary
     Registry = ''
     RegistryDockerVersion = None
+    LoginRequired = True
     Organization = None
     AppName = None
     LayerName = None
@@ -453,10 +454,11 @@ class DockerBuildLayer(object):
     @classmethod
     def docker_login(cls, namespace):
         namespace.logger.info("Logging in to registry '%s' as user '%s'", cls.Registry, namespace.username)
-        assert namespace.username, "No username"
-        assert namespace.password, "No password"
-        return namespace.docker.login(
-            username=namespace.username, password=namespace.password, registry=cls.Registry)
+        assert not cls.LoginRequired or namespace.username, "No username"
+        assert not cls.LoginRequired or namespace.password, "No password"
+        if namespace.username and namespace.password:
+            return namespace.docker.login(
+                username=namespace.username, password=namespace.password, registry=cls.Registry)
 
     @classmethod
     def docker_info(cls, namespace):
