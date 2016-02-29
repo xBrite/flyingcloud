@@ -257,7 +257,7 @@ class DockerBuildLayer(object):
     @classmethod
     def docker_tags_for_image(cls, namespace, image_name):
         parts = image_name.split('/')
-        if len(parts) == 3:
+        if len(parts) == 3 and namespace.username and namespace.password:
             url = "https://{0}/v1/repositories/{1}/{2}/tags".format(
                 parts[0], parts[1], parts[2].split(':')[0])
             r = requests.get(url, auth=(namespace.username, namespace.password))
