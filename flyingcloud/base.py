@@ -214,6 +214,8 @@ class DockerBuildLayer(object):
     @classmethod
     def build_dockerfile(cls, namespace, tag, dockerfile=None, fileobj=None):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
+        if dockerfile:
+            dockerfile = os.path.relpath(dockerfile, namespace.base_dir)
         for line in namespace.docker.build(tag=tag, path=namespace.base_dir,
                                            dockerfile=dockerfile, fileobj=fileobj):
             line =  line.rstrip('\r\n')

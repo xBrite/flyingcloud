@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import os
 from io import BytesIO
 
@@ -39,6 +41,7 @@ class SystemBaseLayer(ExampleBuildLayer):
     def initialize_build(self, args, salt_dir):
         # TODO: move to flyingcloud base
         dockerfile_path = os.path.join(args.base_dir, salt_dir, "Dockerfile")
+        assert os.path.exists(dockerfile_path)
         self.source_image_name = self.build_dockerfile(args, self.layer_timestamp_name, dockerfile=dockerfile_path)
 
 
