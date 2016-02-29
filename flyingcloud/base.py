@@ -130,7 +130,11 @@ class DockerBuildLayer(object):
         self.layer_squashed_name = "{}-sq".format(self.layer_timestamp_name)
 
         self.initialize_build(namespace, salt_dir)
-        self.expose_ports(namespace)
+        dockerfile = self.get_dockerfile(salt_dir)
+        if dockerfile:
+            self.auto_build_dockerfile(namespace, dockerfile)
+        else:
+            self.expose_ports(namespace)
 
         if self.PullLayer:
             self.docker_pull(namespace, self.source_image_name)
@@ -167,6 +171,14 @@ class DockerBuildLayer(object):
         else:
             namespace.logger.info("Not pushing Docker layers.")
         return layer_strong_name
+
+    def get_dockerfile(self, salt_dir):
+        df = os.path.join(salt_dir, "Dockerfile")
+        return df if os.path.exists(df) else None
+
+    def auto_build_dockerfile(self, namespace, dockerfile):
+        namespace.logger.info("Building %s", dockerfile)
+        self.source_image_name = self.build_dockerfile(namespace, self.layer_timestamp_name, dockerfile=dockerfile)
 
     def expose_ports(self, namespace):
         if self.ExposedPorts:
