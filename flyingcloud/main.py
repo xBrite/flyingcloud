@@ -71,11 +71,13 @@ def main():
         base_dir=base_dir,
     )
 
-    layers = parse_project_yaml(project_root)
-
-    if not layers:
+    try:
+        layers = parse_project_yaml(project_root)
+        if not layers:
+            raise ValueError("Uh!")
+    except:
         # TODO: argparse help
-        raise ValueError("Uh!")
+        raise
 
     layers[0].main(
         defaults,
