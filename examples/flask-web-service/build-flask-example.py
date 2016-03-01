@@ -9,6 +9,9 @@ from io import BytesIO
 from flyingcloud import DockerBuildLayer
 
 
+# TODO
+# - fail if layer config dir is not present
+
 class BuildFlaskExampleError(Exception):
     pass
 
@@ -38,12 +41,6 @@ class SystemBaseLayer(ExampleBuildLayer):
     SaltStateDir = LayerSuffix
     PullLayer = False
 
-    def initialize_build(self, args, salt_dir):
-        # TODO: move to flyingcloud base
-        dockerfile_path = os.path.join(args.base_dir, salt_dir, "Dockerfile")
-        assert os.path.exists(dockerfile_path)
-        self.source_image_name = self.build_dockerfile(args, self.layer_timestamp_name, dockerfile=dockerfile_path)
-
 
 class PythonBaseLayer(ExampleBuildLayer):
     CommandName = 'pybase'
@@ -67,8 +64,8 @@ class OpenCvLayer(ExampleBuildLayer):
     SaltStateDir = CommandName
 
 
-class FlaskExampleLayer(ExampleBuildLayer):
-    CommandName = 'flask_example'
+class AppLayer(ExampleBuildLayer):
+    CommandName = 'app'
     Description = 'Build Flask Example app'
     LayerSuffix = CommandName
     SaltStateDir = LayerSuffix
@@ -76,23 +73,14 @@ class FlaskExampleLayer(ExampleBuildLayer):
     TargetImagePrefixName = "{}/{}/{}_{}".format(
             ExampleBuildLayer.Registry, ExampleBuildLayer.Organization, ExampleBuildLayer.AppName, CommandName)
     TargetImageName = TargetImagePrefixName + ":latest"
-    Dockerfile = """
-            FROM {}
-            EXPOSE 80
-    """.format(SourceImageName)
-
-    def initialize_build(self, namespace, salt_dir):
-        # expose ports via Dockerfile
-        # TODO: autoexpose
-        fileobj = BytesIO(self.Dockerfile.encode('utf-8'))
-        self.build_dockerfile(namespace, self.layer_timestamp_name, fileobj=fileobj)
+    ExposedPorts = [80]
 
 
 class FlaskExampleTestLayer(ExampleBuildLayer):
     CommandName = 'tests'
     Description = 'Build Flask Tests Layer'
     LayerSuffix = CommandName
-    SourceImageName = FlaskExampleLayer.TargetImageName
+    SourceImageName = AppLayer.TargetImageName
     TargetImagePrefixName = "{}/{}/{}_{}".format(
             ExampleBuildLayer.Registry, ExampleBuildLayer.Organization, ExampleBuildLayer.AppName, CommandName)
     TargetImageName = TargetImagePrefixName + ":latest"
@@ -111,7 +99,7 @@ def main():
             SystemBaseLayer,
             PythonBaseLayer,
             OpenCvLayer,
-            FlaskExampleLayer,
+            AppLayer,
             description="Build a Flask example Docker image using SaltStack",
     )
 

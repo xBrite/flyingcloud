@@ -5,6 +5,7 @@
 import argparse
 import datetime
 import glob
+from io import BytesIO
 import json
 import tempfile
 
@@ -21,7 +22,6 @@ import time
 
 from .utils import disk_usage, abspath
 
-
 STREAMING_CHUNK_SIZE = (1 << 20)
 
 
@@ -31,6 +31,7 @@ STREAMING_CHUNK_SIZE = (1 << 20)
 
 class FlyingCloudError(Exception):
     """Base error"""
+
 
 class EnvironmentVarError(FlyingCloudError):
     """Missing environment variable"""
@@ -76,14 +77,15 @@ class DockerBuildLayer(object):
     SaltStateDir = None
     CommandName = None
     SaltExecTimeout = 45 * 60  # seconds, for long-running commands
-    DefaultTimeout = 5 * 60 # need longer than default timeout for most commands
+    DefaultTimeout = 5 * 60  # need longer than default timeout for most commands
+    ExposedPorts = None
     USERNAME_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
     PASSWORD_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
 
     @classmethod
     def main(cls, defaults, *layer_classes, **kwargs):
-        if os.geteuid() != 0 and platform.system() == "Linux":
-            raise NotSudoError("You must be root (use sudo)")
+#       if os.geteuid() != 0 and platform.system() == "Linux":
+#           raise NotSudoError("You must be root (use sudo)")
         if cls.Registry:
             for v in [cls.USERNAME_VAR, cls.PASSWORD_VAR]:
                 if v not in os.environ:
@@ -97,7 +99,9 @@ class DockerBuildLayer(object):
             namespace.func(namespace)
         namespace.logger.info("Build finished")
 
-    def __init__(self):
+    def __init__(self, appname=None, layer_suffix=None):
+        self.AppName = appname or self.AppName
+        self.LayerSuffix = layer_suffix or self.LayerSuffix
         assert self.AppName
         assert self.LayerSuffix
         self.ContainerName = "{}_{}".format(self.AppName, self.LayerSuffix)
@@ -123,11 +127,22 @@ class DockerBuildLayer(object):
 
     def build(self, namespace):
         salt_dir = os.path.abspath(os.path.join(namespace.salt_dir, self.SaltStateDir))
+
+        if not os.path.exists(salt_dir):
+            message = "Configuration directory %s does not exist, failing!" % salt_dir
+            namespace.logger.error(message)
+            raise CommandError(message)
+
         self.layer_latest_name = "{}:latest".format(self.ImageName)
         self.layer_timestamp_name = "{}:{}".format(self.ImageName, namespace.timestamp)
         self.layer_squashed_name = "{}-sq".format(self.layer_timestamp_name)
 
         self.initialize_build(namespace, salt_dir)
+        dockerfile = self.get_dockerfile(salt_dir)
+        if dockerfile:
+            self.auto_build_dockerfile(namespace, dockerfile)
+        else:
+            self.expose_ports(namespace)
 
         if self.PullLayer:
             self.docker_pull(namespace, self.source_image_name)
@@ -164,6 +179,25 @@ class DockerBuildLayer(object):
         else:
             namespace.logger.info("Not pushing Docker layers.")
         return layer_strong_name
+
+    def get_dockerfile(self, salt_dir):
+        df = os.path.join(salt_dir, "Dockerfile")
+        return df if os.path.exists(df) else None
+
+    def auto_build_dockerfile(self, namespace, dockerfile):
+        namespace.logger.info("Building %s", dockerfile)
+        self.source_image_name = self.build_dockerfile(namespace, self.layer_timestamp_name, dockerfile=dockerfile)
+
+    def expose_ports(self, namespace):
+        if self.ExposedPorts:
+            port_list = " ".join(str(p) for p in self.ExposedPorts)
+            Dockerfile = """
+                FROM {}
+                EXPOSE {}
+            """.format(self.SourceImageName, port_list)
+            namespace.logger.info("Exposing ports: %s", port_list)
+            fileobj = BytesIO(Dockerfile.encode('utf-8'))
+            self.build_dockerfile(namespace, self.layer_timestamp_name, fileobj=fileobj)
 
     def salt_states_exist(self, salt_dir):
         files = glob.glob(os.path.join(salt_dir, '*.sls'))
@@ -218,7 +252,7 @@ class DockerBuildLayer(object):
             dockerfile = os.path.relpath(dockerfile, namespace.base_dir)
         for line in namespace.docker.build(tag=tag, path=namespace.base_dir,
                                            dockerfile=dockerfile, fileobj=fileobj):
-            line =  line.rstrip('\r\n')
+            line = line.rstrip('\r\n')
             namespace.logger.debug("%s", line)
         # Grrr! Why doesn't docker-py handle this for us?
         match = re.search(r'Successfully built ([0-9a-f]+)', line)
@@ -437,7 +471,7 @@ class DockerBuildLayer(object):
     def _docker_push_pull(cls, namespace, image_name, verb):
         give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
             verb, image_name, namespace.retries)
-        for attempt in range(1, namespace.retries+1):
+        for attempt in range(1, namespace.retries + 1):
             try:
                 namespace.logger.info("docker_%s %s, attempt %d/%d",
                                       verb, image_name, attempt, namespace.retries)
@@ -528,11 +562,16 @@ class DockerBuildLayer(object):
         subparsers = parser.add_subparsers(help="sub-command")
 
         for layer_cls in layer_classes:
+            classobj = type(layer_cls).__name__ == 'classobj'
+            if classobj:
+                func = layer_cls().build
+            else:
+                func = layer_cls.build
             subparser = subparsers.add_parser(
                 layer_cls.CommandName, help=layer_cls.Description)
             subparser.set_defaults(
                 layer_cls=layer_cls,
-                func=layer_cls().build)
+                func=func)
             layer_cls.add_parser_options(subparser)
 
         namespace = parser.parse_args()
@@ -584,4 +623,3 @@ class DockerBuildLayer(object):
             verify=True)
         namespace.logger.info("Docker-Machine: using {}".format(kwargs))
         return kwargs
-
