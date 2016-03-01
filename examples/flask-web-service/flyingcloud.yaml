@@ -1,0 +1,18 @@
+layers:
+  - app
+  - opencv
+  - pybase
+  - sysbase
+
+# TODO: add 'test' layer, which requires Python code
+username_varname: EXAMPLE_DOCKER_REGISTRY_USERNAME
+password_varname: EXAMPLE_DOCKER_REGISTRY_PASSWORD
+registry: quay.io
+organization: cookbrite
+registry_docker_version: "1.17"
+app_name: 'flaskexample'
+login_required: false
+squash_layer: false
+push_layer: false
+pull_layer: false
+

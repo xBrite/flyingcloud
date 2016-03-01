@@ -577,6 +577,7 @@ class DockerBuildLayer(object):
             kwargs.setdefault('version', self.RegistryDockerVersion)
         if platform.system() == "Darwin":
             kwargs = self.get_docker_machine_client(namespace, **kwargs)
+        namespace.logger.debug("Constructing docker client object with %s", kwargs)
         return docker.Client(*args, **kwargs)
 
     def get_docker_machine_client(self, namespace, **kwargs):

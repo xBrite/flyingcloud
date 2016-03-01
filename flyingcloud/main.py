@@ -8,8 +8,33 @@ import platform
 import sh
 import sys
 
+import yaml
+
 from .base import DockerBuildLayer
 
+
+def parse_project_yaml():
+    class NewLayer(DockerBuildLayer):
+        pass
+
+    project_filename = os.path.join(os.getcwd(), "flyingcloud.yaml")
+    with open(project_filename) as fp:
+        project_info = yaml.load(fp)
+
+    # shared settings
+    # TODO: make these use defaults so they can be optional
+    NewLayer.USERNAME_VAR = project_info['username_varname']
+    NewLayer.PASSWORD_VAR = project_info['password_varname']
+    NewLayer.Registry = project_info['registry']
+    NewLayer.RegistryDockerVersion = project_info['registry_docker_version']
+    NewLayer.Organization = project_info['organization']
+    NewLayer.AppName = project_info['app_name']
+    NewLayer.LoginRequired = project_info['login_required']
+    NewLayer.SquashLayer = project_info['squash_layer']
+    NewLayer.PushLayer = project_info['push_layer']
+    NewLayer.PullLayer = project_info['pull_layer']
+
+    return NewLayer
 
 def main():
     base_dir = os.path.abspath(os.getcwd())
@@ -17,20 +42,7 @@ def main():
         base_dir=base_dir,
     )
 
-    class NewLayer(DockerBuildLayer):
-        pass
-
-    # shared settings
-    NewLayer.USERNAME_VAR = 'EXAMPLE_DOCKER_REGISTRY_USERNAME'
-    NewLayer.PASSWORD_VAR = 'EXAMPLE_DOCKER_REGISTRY_PASSWORD'
-    NewLayer.Registry = 'quay.io'
-    NewLayer.RegistryDockerVersion = "1.17"
-    NewLayer.Organization = 'cookbrite'
-    NewLayer.AppName = 'flaskexample'
-    NewLayer.LoginRequired = False
-    NewLayer.SquashLayer = False
-    NewLayer.PushLayer = False
-    NewLayer.PullLayer = False
+    NewLayer = parse_project_yaml()
 
     if os.geteuid() != 0 and platform.system() == "Linux":
         sudo_command = sh.Command('sudo')
