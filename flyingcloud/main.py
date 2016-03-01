@@ -13,16 +13,34 @@ import yaml
 from .base import DockerBuildLayer
 
 
-def parse_project_yaml():
+def get_layer(layer_base_class, layer_name, project_root):
+    layer_filename = os.path.join(project_root, "salt", layer_name, "layer.yaml")
+    with open(layer_filename) as fp:
+        info = yaml.load(fp)
+
+    # TODO: make these use defaults so they can be optional
+    layer = layer_base_class(layer_base_class.AppName, command_name=layer_name)
+    layer.__doc__ = "Parsed from {}".format(layer_filename)
+    layer.Description = info['description']
+    layer.ExposedPorts = info['exposed_ports']
+    layer.SourceImageBaseName = '{}_{}'.format(
+        layer_base_class.AppName, info["parent"])
+    layer.set_layer_defaults()
+
+    return layer
+
+
+def parse_project_yaml(project_root):
     class NewLayer(DockerBuildLayer):
         pass
 
-    project_filename = os.path.join(os.getcwd(), "flyingcloud.yaml")
+    project_filename = os.path.join(project_root, "flyingcloud.yaml")
     with open(project_filename) as fp:
         project_info = yaml.load(fp)
 
     # shared settings
     # TODO: make these use defaults so they can be optional
+    NewLayer.project_filename = project_filename
     NewLayer.USERNAME_VAR = project_info['username_varname']
     NewLayer.PASSWORD_VAR = project_info['password_varname']
     NewLayer.Registry = project_info['registry']
@@ -34,30 +52,32 @@ def parse_project_yaml():
     NewLayer.PushLayer = project_info['push_layer']
     NewLayer.PullLayer = project_info['pull_layer']
 
-    return NewLayer
+    layers = []
+    for layer_name in project_info["layers"]:
+        layers.append(get_layer(NewLayer, layer_name, project_root))
+
+    return layers
+
 
 def main():
-    base_dir = os.path.abspath(os.getcwd())
+    if os.geteuid() != 0 and platform.system() == "Linux":
+        sudo_command = sh.Command('sudo')
+        sudo_command([sys.executable] + sys.argv)
+        return
+
+    project_root = os.getcwd()
+    base_dir = os.path.abspath(project_root)
     defaults = dict(
         base_dir=base_dir,
     )
 
-    NewLayer = parse_project_yaml()
+    layers = parse_project_yaml(project_root)
 
-    if os.geteuid() != 0 and platform.system() == "Linux":
-        sudo_command = sh.Command('sudo')
-        sudo_command([sys.executable] + sys.argv)
-    else:
-        # TODO: get all these from yaml file
-        app_layer = NewLayer('flaskexample', command_name='app')
-        app_layer.CommandName = 'app'
-        app_layer.Description = 'appy stuff'
-        app_layer.ExposedPorts = [80]
-        app_layer.SourceImageBaseName = 'flaskexample_opencv'
-        app_layer.set_layer_defaults()
+    if not layers:
+        # TODO: argparse help
+        raise ValueError("Uh!")
 
-        app_layer.main(
-            defaults,
-            app_layer,
-            description="Build Docker images using SaltStack",
-        )
+    layers[0].main(
+        defaults,
+        *layers,
+        description="Build Docker images using SaltStack")
