@@ -64,7 +64,7 @@ class OpenCvLayer(ExampleBuildLayer):
     SaltStateDir = CommandName
 
 
-class FlaskExampleLayer(ExampleBuildLayer):
+class AppLayer(ExampleBuildLayer):
     CommandName = 'app'
     Description = 'Build Flask Example app'
     LayerSuffix = CommandName
@@ -80,7 +80,7 @@ class FlaskExampleTestLayer(ExampleBuildLayer):
     CommandName = 'tests'
     Description = 'Build Flask Tests Layer'
     LayerSuffix = CommandName
-    SourceImageName = FlaskExampleLayer.TargetImageName
+    SourceImageName = AppLayer.TargetImageName
     TargetImagePrefixName = "{}/{}/{}_{}".format(
             ExampleBuildLayer.Registry, ExampleBuildLayer.Organization, ExampleBuildLayer.AppName, CommandName)
     TargetImageName = TargetImagePrefixName + ":latest"
@@ -99,7 +99,7 @@ def main():
             SystemBaseLayer,
             PythonBaseLayer,
             OpenCvLayer,
-            FlaskExampleLayer,
+            AppLayer,
             description="Build a Flask example Docker image using SaltStack",
     )
 
