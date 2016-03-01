@@ -17,18 +17,35 @@ def main():
         base_dir=base_dir,
     )
 
+    class NewLayer(DockerBuildLayer):
+        pass
+
+    # shared settings
+    NewLayer.USERNAME_VAR = 'EXAMPLE_DOCKER_REGISTRY_USERNAME'
+    NewLayer.PASSWORD_VAR = 'EXAMPLE_DOCKER_REGISTRY_PASSWORD'
+    NewLayer.Registry = 'quay.io'
+    NewLayer.RegistryDockerVersion = "1.17"
+    NewLayer.Organization = 'cookbrite'
+    NewLayer.AppName = 'flaskexample'
+    NewLayer.LoginRequired = False
+    NewLayer.SquashLayer = False
+    NewLayer.PushLayer = False
+    NewLayer.PullLayer = False
+
     if os.geteuid() != 0 and platform.system() == "Linux":
         sudo_command = sh.Command('sudo')
         sudo_command([sys.executable] + sys.argv)
     else:
-        AppLayer = DockerBuildLayer('flaskexample', 'app')
-        AppLayer.CommandName = 'app'
-        AppLayer.Description = 'appy stuff'
-        AppLayer.USERNAME_VAR = 'EXAMPLE_DOCKER_REGISTRY_USERNAME'
-        AppLayer.PASSWORD_VAR = 'EXAMPLE_DOCKER_REGISTRY_PASSWORD'
+        # TODO: get all these from yaml file
+        app_layer = NewLayer('flaskexample', command_name='app')
+        app_layer.CommandName = 'app'
+        app_layer.Description = 'appy stuff'
+        app_layer.ExposedPorts = [80]
+        app_layer.SourceImageBaseName = 'flaskexample_opencv'
+        app_layer.set_layer_defaults()
 
-        DockerBuildLayer.main(
+        app_layer.main(
             defaults,
-            AppLayer,
-            description="Build a Docker images using SaltStack",
+            app_layer,
+            description="Build Docker images using SaltStack",
         )
