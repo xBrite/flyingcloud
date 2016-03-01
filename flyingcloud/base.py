@@ -84,8 +84,8 @@ class DockerBuildLayer(object):
 
     @classmethod
     def main(cls, defaults, *layer_classes, **kwargs):
-        if os.geteuid() != 0 and platform.system() == "Linux":
-            raise NotSudoError("You must be root (use sudo)")
+#       if os.geteuid() != 0 and platform.system() == "Linux":
+#           raise NotSudoError("You must be root (use sudo)")
         if cls.Registry:
             for v in [cls.USERNAME_VAR, cls.PASSWORD_VAR]:
                 if v not in os.environ:
@@ -99,7 +99,9 @@ class DockerBuildLayer(object):
             namespace.func(namespace)
         namespace.logger.info("Build finished")
 
-    def __init__(self):
+    def __init__(self, appname=None, layer_suffix=None):
+        self.AppName = appname or self.AppName
+        self.LayerSuffix = layer_suffix or self.LayerSuffix
         assert self.AppName
         assert self.LayerSuffix
         self.ContainerName = "{}_{}".format(self.AppName, self.LayerSuffix)
@@ -560,11 +562,16 @@ class DockerBuildLayer(object):
         subparsers = parser.add_subparsers(help="sub-command")
 
         for layer_cls in layer_classes:
+            classobj = type(layer_cls).__name__ == 'classobj'
+            if classobj:
+                func = layer_cls().build
+            else:
+                func = layer_cls.build
             subparser = subparsers.add_parser(
                 layer_cls.CommandName, help=layer_cls.Description)
             subparser.set_defaults(
                 layer_cls=layer_cls,
-                func=layer_cls().build)
+                func=func)
             layer_cls.add_parser_options(subparser)
 
         namespace = parser.parse_args()
