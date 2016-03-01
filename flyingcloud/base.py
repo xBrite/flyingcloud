@@ -125,6 +125,12 @@ class DockerBuildLayer(object):
 
     def build(self, namespace):
         salt_dir = os.path.abspath(os.path.join(namespace.salt_dir, self.SaltStateDir))
+
+        if not os.path.exists(salt_dir):
+            message = "Configuration directory %s does not exist, failing!" % salt_dir
+            namespace.logger.error(message)
+            raise CommandError(message)
+
         self.layer_latest_name = "{}:latest".format(self.ImageName)
         self.layer_timestamp_name = "{}:{}".format(self.ImageName, namespace.timestamp)
         self.layer_squashed_name = "{}-sq".format(self.layer_timestamp_name)
