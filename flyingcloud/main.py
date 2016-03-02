@@ -25,28 +25,28 @@ def get_layer(layer_base_class, layer_name, layer_info):
 
     return layer
 
+
 def configure_layers(project_root):
     project_name, project_info, layers_info = get_project_info(project_root)
     return parse_project_yaml(project_name=project_name,
-                                project_info=project_info,
-                                layers_info=layers_info)
+                              project_info=project_info,
+                              layers_info=layers_info)
 
 
 def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
-
     # shared settings
     # TODO: make these use defaults so they can be optional
     NewLayer.project_filename = project_name
-    NewLayer.USERNAME_VAR = project_info['username_varname']
-    NewLayer.PASSWORD_VAR = project_info['password_varname']
-    NewLayer.Registry = project_info['registry']
-    NewLayer.RegistryDockerVersion = project_info['registry_docker_version']
-    NewLayer.Organization = project_info['organization']
-    NewLayer.AppName = project_info['app_name']
-    NewLayer.LoginRequired = project_info['login_required']
-    NewLayer.SquashLayer = project_info['squash_layer']
-    NewLayer.PushLayer = project_info['push_layer']
-    NewLayer.PullLayer = project_info['pull_layer']
+    NewLayer.USERNAME_VAR = project_info.get('username_varname', NewLayer.USERNAME_VAR)
+    NewLayer.PASSWORD_VAR = project_info.get('password_varname', NewLayer.PASSWORD_VAR)
+    NewLayer.Registry = project_info.get('registry', NewLayer.Registry)
+    NewLayer.RegistryDockerVersion = project_info.get('registry_docker_version', NewLayer.RegistryDockerVersion)
+    NewLayer.Organization = project_info.get('organization', NewLayer.Organization)
+    NewLayer.AppName = project_info.get('app_name', NewLayer.AppName)
+    NewLayer.LoginRequired = project_info.get('login_required', NewLayer.LoginRequired)
+    NewLayer.SquashLayer = project_info.get('squash_layer', NewLayer.SquashLayer)
+    NewLayer.PushLayer = project_info.get('push_layer', NewLayer.PushLayer)
+    NewLayer.PullLayer = project_info.get('pull_layer', NewLayer.PullLayer)
 
     layers = []
     for layer_name in project_info["layers"]:
