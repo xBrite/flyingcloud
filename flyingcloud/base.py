@@ -602,4 +602,6 @@ class DockerBuildLayer(object):
         namespace.logger.info("Docker-Machine: using {}".format(kwargs))
         return kwargs
 
+class NewLayer(DockerBuildLayer):
+    pass
 

@@ -10,7 +10,7 @@ import sys
 
 import yaml
 
-from .base import DockerBuildLayer
+from .base import DockerBuildLayer, NewLayer
 
 
 def get_layer(layer_base_class, layer_name, layer_info):
@@ -33,8 +33,6 @@ def configure_layers(project_root):
 
 
 def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
-    class NewLayer(DockerBuildLayer):
-        pass
 
     # shared settings
     # TODO: make these use defaults so they can be optional
