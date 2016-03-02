@@ -29,13 +29,6 @@ def get_layer(layer_base_class, layer_name, layer_info):
     return layer
 
 
-def configure_layers(project_root):
-    project_name, project_info, layers_info = get_project_info(project_root)
-    return parse_project_yaml(project_name=project_name,
-                              project_info=project_info,
-                              layers_info=layers_info)
-
-
 def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
     NewLayer.project_filename = project_name
     NewLayer.USERNAME_VAR = project_info.get('username_varname', NewLayer.USERNAME_VAR)
@@ -72,11 +65,16 @@ def get_project_info(project_root):
     return project_name, project_info, layers_info
 
 
+def configure_layers(project_root):
+    project_name, project_info, layers_info = get_project_info(project_root)
+    return parse_project_yaml(project_name=project_name,
+                              project_info=project_info,
+                              layers_info=layers_info)
+
+
 def main():
     if os.geteuid() != 0 and platform.system() == "Linux":
-        sudo_command = sh.Command('sudo')
-        sudo_command([sys.executable] + sys.argv)
-        return
+        raise ValueError("Not root. Rerun command with sudo.")
 
     project_root = os.getcwd()
     base_dir = os.path.abspath(project_root)

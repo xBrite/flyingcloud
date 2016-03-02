@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: install this with setuptools
+
 function flyingcloud() {
     if [ -z "$VIRTUAL_ENV" ]; then
         echo "You must run inside a Python virtual environment"
