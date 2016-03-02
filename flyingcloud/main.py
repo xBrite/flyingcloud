@@ -34,8 +34,6 @@ def configure_layers(project_root):
 
 
 def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
-    # shared settings
-    # TODO: make these use defaults so they can be optional
     NewLayer.project_filename = project_name
     NewLayer.USERNAME_VAR = project_info.get('username_varname', NewLayer.USERNAME_VAR)
     NewLayer.PASSWORD_VAR = project_info.get('password_varname', NewLayer.PASSWORD_VAR)
