@@ -1,4 +1,4 @@
-description: Build Flask Example app
+description: Flask Example app
 parent: opencv
 exposed_ports:
   - 80

@@ -1,8 +1,8 @@
 layers:
   - app
-# - opencv
-# - pybase
-# - sysbase
+  - opencv
+  - pybase
+  - sysbase
 
 # TODO: add 'test' layer, which requires Python code
 username_varname: EXAMPLE_DOCKER_REGISTRY_USERNAME

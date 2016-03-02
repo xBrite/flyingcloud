@@ -5,8 +5,13 @@ Flask example
 * docker-machine ssh default -f -N -L localhost:8080:localhost:8080
 
 
+Install
+=======
+
+* `python setup.py install`
+
 Running Tests
 =============
 
-* `$ pip install -r requirements.txt`
-* `$ pytest tests`
+* `pip install -r requirements.txt`
+* `pytest tests`

@@ -130,7 +130,7 @@ class DockerBuildLayer(object):
     def set_layer_defaults(self):
         self.TargetImagePrefixName = "{}/{}/{}_{}".format(
             self.Registry, self.Organization, self.AppName, self.CommandName)
-        self.SourceImageName = "{}/{}/{}".format(
+        self.source_image_name = self.SourceImageName = "{}/{}/{}".format(
             self.Registry, self.Organization, self.SourceImageBaseName)
         self.TargetImageName = self.TargetImagePrefixName + ":latest"
 
