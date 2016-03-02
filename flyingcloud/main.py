@@ -13,34 +13,32 @@ import yaml
 from .base import DockerBuildLayer
 
 
-def get_layer(layer_base_class, layer_name, project_root):
-    layer_filename = os.path.join(project_root, "salt", layer_name, "layer.yaml")
-    with open(layer_filename) as fp:
-        info = yaml.load(fp)
-
+def get_layer(layer_base_class, layer_name, layer_info):
     # TODO: make these use defaults so they can be optional
     layer = layer_base_class(layer_base_class.AppName, command_name=layer_name)
-    layer.__doc__ = "Parsed from {}".format(layer_filename)
-    layer.Description = info['description']
-    layer.ExposedPorts = info['exposed_ports']
+    layer.__doc__ = "Parsed from {}".format(layer_name)
+    layer.Description = layer_info['description']
+    layer.ExposedPorts = layer_info['exposed_ports']
     layer.SourceImageBaseName = '{}_{}'.format(
-        layer_base_class.AppName, info["parent"])
+        layer_base_class.AppName, layer_info["parent"])
     layer.set_layer_defaults()
 
     return layer
 
+def configure_layers(project_root):
+    project_name, project_info, layers_info = get_project_info(project_root)
+    return parse_project_yaml(project_name=project_name,
+                                project_info=project_info,
+                                layers_info=layers_info)
 
-def parse_project_yaml(project_root):
+
+def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
     class NewLayer(DockerBuildLayer):
         pass
 
-    project_filename = os.path.join(project_root, "flyingcloud.yaml")
-    with open(project_filename) as fp:
-        project_info = yaml.load(fp)
-
     # shared settings
     # TODO: make these use defaults so they can be optional
-    NewLayer.project_filename = project_filename
+    NewLayer.project_filename = project_name
     NewLayer.USERNAME_VAR = project_info['username_varname']
     NewLayer.PASSWORD_VAR = project_info['password_varname']
     NewLayer.Registry = project_info['registry']
@@ -54,9 +52,24 @@ def parse_project_yaml(project_root):
 
     layers = []
     for layer_name in project_info["layers"]:
-        layers.append(get_layer(NewLayer, layer_name, project_root))
+        layers.append(get_layer(NewLayer, layer_name, layers_info[layer_name]))
 
     return layers
+
+
+def get_project_info(project_root):
+    project_filename = os.path.join(project_root, "flyingcloud.yaml")
+    with open(project_filename) as fp:
+        project_info = yaml.load(fp)
+
+    layers_info = {}
+    for layer_name in project_info['layers']:
+        layer_filename = os.path.join(project_root, "salt", layer_name, "layer.yaml")
+        with open(layer_filename) as fp:
+            info = yaml.load(fp)
+            layers_info[layer_name] = info
+
+    return project_filename, project_info, layers_info
 
 
 def main():
@@ -72,7 +85,7 @@ def main():
     )
 
     try:
-        layers = parse_project_yaml(project_root)
+        layers = configure_layers(project_root)
         if not layers:
             raise ValueError("Uh!")
     except:
