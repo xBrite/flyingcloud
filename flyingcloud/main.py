@@ -59,6 +59,7 @@ def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
 
 def get_project_info(project_root):
     project_filename = os.path.join(project_root, "flyingcloud.yaml")
+    project_name = os.path.basename(project_root)
     with open(project_filename) as fp:
         project_info = yaml.load(fp)
 
@@ -69,7 +70,7 @@ def get_project_info(project_root):
             info = yaml.load(fp)
             layers_info[layer_name] = info
 
-    return project_filename, project_info, layers_info
+    return project_name, project_info, layers_info
 
 
 def main():

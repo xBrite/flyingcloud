@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+
 from flyingcloud.main import get_project_info
 
 
@@ -33,7 +35,12 @@ exposed_ports:
   - 80
         """
         layer_file.write(layer_file_content)
-        print(tmpdir.dirpath())
-        print(tmpdir.realpath())
-        info = get_project_info(str(tmpdir.realpath()))
-        assert info is not None
+        expected_project_name = os.path.basename(str(tmpdir.realpath()))
+        project_name, project_info, layers_info = get_project_info(str(tmpdir.realpath()))
+        assert project_name is not None
+        assert project_info is not None
+        assert layers_info is not None
+        assert expected_project_name == project_name
+        assert len(layers_info) == 1
+        assert len(project_info['layers']) == 1
+
