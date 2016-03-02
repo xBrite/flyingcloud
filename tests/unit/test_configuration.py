@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
 
-from flyingcloud import NewLayer
+import pytest
+
+from flyingcloud import NewLayer, FlyingCloudError
 from flyingcloud.main import get_project_info, parse_project_yaml
 
 
@@ -75,11 +77,10 @@ exposed_ports:
             'layers': ['app'],
             'app_name': 'flaskexample',
         }
-        layers_info = {'app': {
-            'description': 'Build Flask Example app',
-            'parent': 'opencv',
-            'exposed_ports': [80]
-        }
+        layers_info = { 'app':
+            {
+                'description': 'Build Flask Example app',
+            }
         }
         layers = parse_project_yaml(project_name=project_name,
                                     project_info=project_info,
@@ -87,3 +88,26 @@ exposed_ports:
         assert layers is not None
         assert len(layers) == 1
         assert type(layers[0]) == NewLayer
+
+    def test_parse_project_yaml_raises_on_missing_layer_description(self):
+        project_name = "flaskexample"
+        project_info = {
+            'layers': ['app'],
+            'app_name': 'flaskexample',
+        }
+        layers_info = {'app': {}}
+        with pytest.raises(FlyingCloudError):
+            parse_project_yaml(project_name=project_name,
+                               project_info=project_info,
+                               layers_info=layers_info)
+
+    def test_parse_project_yaml_raises_on_missing_project_appname(self):
+        project_name = "flaskexample"
+        project_info = {
+            'layers': ['app'],
+        }
+        layers_info = {'app': {}}
+        with pytest.raises(FlyingCloudError):
+            parse_project_yaml(project_name=project_name,
+                               project_info=project_info,
+                               layers_info=layers_info)

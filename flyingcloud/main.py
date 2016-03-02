@@ -10,17 +10,20 @@ import sys
 
 import yaml
 
-from .base import DockerBuildLayer, NewLayer
+from .base import DockerBuildLayer, NewLayer, FlyingCloudError
 
 
 def get_layer(layer_base_class, layer_name, layer_info):
-    # TODO: make these use defaults so they can be optional
     layer = layer_base_class(layer_base_class.AppName, command_name=layer_name)
     layer.__doc__ = "Parsed from {}".format(layer_name)
-    layer.Description = layer_info['description']
-    layer.ExposedPorts = layer_info['exposed_ports']
-    layer.SourceImageBaseName = '{}_{}'.format(
-        layer_base_class.AppName, layer_info["parent"])
+    layer.Description = layer_info.get('description')
+    if not layer.Description:
+        raise FlyingCloudError("layer %s is missing a description." % layer_name)
+    layer.ExposedPorts = layer_info.get('exposed_ports')
+    parent = layer_info.get("parent")
+    if parent:
+        layer.SourceImageBaseName = '{}_{}'.format(
+            layer_base_class.AppName, parent)
     layer.set_layer_defaults()
 
     return layer

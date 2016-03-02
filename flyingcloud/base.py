@@ -79,6 +79,7 @@ class DockerBuildLayer(object):
     SaltExecTimeout = 45 * 60  # seconds, for long-running commands
     DefaultTimeout = 5 * 60  # need longer than default timeout for most commands
     ExposedPorts = None
+    SourceImageBaseName = None
     USERNAME_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
     PASSWORD_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
 
