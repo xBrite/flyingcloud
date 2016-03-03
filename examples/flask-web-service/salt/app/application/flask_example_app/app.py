@@ -3,7 +3,6 @@
 
 from __future__ import unicode_literals, print_function
 
-import json
 import logging
 import os
 from StringIO import StringIO
@@ -46,17 +45,6 @@ app.config.update(
 app.secret_key = os.urandom(24)
 
 
-def _format_json_response(result):
-    json_content = json.dumps(result)
-    response = make_response(json_content)
-    response.headers["Content-Type"] = "application/json"
-    return response
-
-
-def _handle_api():
-    return {"data": "Hello, World!"}
-
-
 @app.errorhandler(403)
 def not_authorized():
     message = {
@@ -77,12 +65,6 @@ def not_found(error=None):
     response = jsonify(message)
     response.status_code = 404
     return response
-
-
-@app.route('/api', methods=['GET'])
-def api():
-    result = _handle_api()
-    return _format_json_response(result)
 
 
 @app.route('/static/<path:path>')
