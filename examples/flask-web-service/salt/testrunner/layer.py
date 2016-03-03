@@ -15,52 +15,28 @@ class TestRunner(BuildLayerBase):
             self.docker_pull(namespace, image_name)
 
         namespace.logger.info("Running tests: type=%s", test_type)
-        test_root = os.path.abspath(os.path.dirname(__file__))
-        share_dir = os.path.join(test_root, 'share')
+        test_path = "/venv/lib/python2.7/site-packages/flask_example_app/tests"
         container_id = self.docker_create_container(
-            namespace, None, image_name,
-            volume_map={share_dir: '/mnt/share'})
+            namespace, None, image_name)
         self.docker_start(namespace, container_id)
 
-        nosetest_filename = "nosetests-{}.xml".format(test_type)
-        fab_task_args_format = "bamboo=yes,xunit_file=/mnt/share/{}"
-
         if test_type == "unit":
-            fab_target = "run_tests"
-            fab_task_args = fab_task_args_format.format(
-                nosetest_filename)
+            test_file = os.path.join(test_path, "unit_test.py")
         elif test_type == "acceptance":
-            fab_target = "run_acceptance_tests"
+            test_file = os.path.join(test_path, "acceptance_test.py")
         else:
             raise ValueError("Unknown test_type: {}".format(test_type))
 
-        cmd = [
-            "/venv/bin/fab",
-            "-f",
-            "/application/ocr/fabfile.py",
-            "{}:{}".format(fab_target, fab_task_args)]
-        result = self.docker_exec(
+        cmd = ["/venv/bin/python", test_file, "--verbose"]
+        result, full_output = self.docker_exec(
             namespace, container_id, cmd, raise_on_error=False)
-        namespace.logger.debug("Run tests: %r", result)
         self.docker_stop(namespace, container_id)
-        result_filename = os.path.join(share_dir, nosetest_filename)
-        namespace.logger.info("Results at %s", result_filename)
-
-        root = objectify.parse(result_filename).getroot()
-        failures = int(root.attrib['failures'])
-        errors = int(root.attrib['errors'])
-        tests = int(root.attrib['tests'])
-
-        if failures > 0 or errors > 0:
-            errmsg = "CookBriteBuildLecternWorkerLayer: {}: " \
-                     "failures={}, errors={}, tests={}".format(
-                result_filename, failures, errors, tests)
-            namespace.logger.info(errmsg)
-            with open(result_filename) as fp:
-                namespace.logger.info("%s", fp.read())
-            raise CommandError(errmsg)
-        else:
-            namespace.logger.info("%d tests passed", tests)
+        namespace.logger.info("Run tests: %r", result)
+        namespace.logger.debug("%s", full_output)
+        exit_code = result['ExitCode']
+        if exit_code != 0:
+            raise CommandError("testrunner {}: exit code was non-zero: {}".format(
+                test_file, exit_code))
 
     @classmethod
     def add_parser_options(cls, subparser):
