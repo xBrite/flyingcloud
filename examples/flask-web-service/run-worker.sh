@@ -47,3 +47,8 @@ if [ -z "$IMAGE" ]; then
 fi
 
 $DOCKER run -d ${argv[@]} "$IMAGE"
+
+# To kill image:
+#   docker kill $(docker ps -q)
+# To kill port forwarding:
+#   ps aux| grep [s]sh.*:8080|awk '{print $2}'|xargs kill -9
