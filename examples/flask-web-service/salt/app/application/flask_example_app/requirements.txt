@@ -2,5 +2,6 @@ flask
 numpy
 # opencv2
 pillow
+pytest
 requests
 uwsgi

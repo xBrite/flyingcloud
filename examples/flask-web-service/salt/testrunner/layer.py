@@ -13,9 +13,9 @@ class TestRunner(BuildLayerBase):
         test_path = "/venv/lib/python2.7/site-packages/flask_example_app/tests"
 
         if test_type == "unit":
-            test_file = os.path.join(test_path, "unit_test.py")
+            test_dir = os.path.join(test_path, "unit")
         elif test_type == "acceptance":
-            test_file = os.path.join(test_path, "acceptance_test.py")
+            test_dir = os.path.join(test_path, "acceptance")
         else:
             raise ValueError("Unknown test_type: {}".format(test_type))
 
@@ -33,16 +33,16 @@ class TestRunner(BuildLayerBase):
             namespace, None, image_name, environment=environment)
         self.docker_start(namespace, container_id)
 
-        cmd = ["/venv/bin/python", test_file, "--verbose"]
+        cmd = ["/venv/bin/py.test", "--tb=long", test_dir]
         result, full_output = self.docker_exec(
             namespace, container_id, cmd, raise_on_error=False)
         self.docker_stop(namespace, container_id)
         namespace.logger.info("Run tests: %r", result)
-        namespace.logger.debug("%s", full_output)
+        namespace.logger.info("%s", full_output)
         exit_code = result['ExitCode']
         if exit_code != 0:
             raise CommandError("testrunner {}: exit code was non-zero: {}".format(
-                test_file, exit_code))
+                test_dir, exit_code))
 
     @classmethod
     def add_parser_options(cls, subparser):
