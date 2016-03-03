@@ -22,10 +22,10 @@ function flyingcloud() {
         argv+=("$ev=$value")
     done
 
-    if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
-        sudo ${argv[@]} $VIRTUAL_ENV/bin/flyingcloud $@
-    elif [ "$(uname)" == "Darwin" ]; then
+    if [ "$(uname)" == "Darwin" ]; then
         $VIRTUAL_ENV/bin/flyingcloud $@
+    elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+        sudo ${argv[@]} $VIRTUAL_ENV/bin/flyingcloud $@
     fi
 }
 
