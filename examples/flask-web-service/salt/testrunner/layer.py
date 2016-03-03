@@ -11,7 +11,8 @@ class TestRunner(BuildLayerBase):
     def build(self, namespace):
         test_type = namespace.test_type
         image_name = self.SourceImageName
-        self.docker_pull(namespace, image_name)
+        if self.PullLayer:
+            self.docker_pull(namespace, image_name)
 
         namespace.logger.info("Running tests: type=%s", test_type)
         test_root = os.path.abspath(os.path.dirname(__file__))
