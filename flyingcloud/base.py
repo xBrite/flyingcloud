@@ -97,7 +97,7 @@ class _DockerBuildLayer(object):
     def check_environment_variables(self):
         if self.Registry:
             for v in [self.USERNAME_VAR, self.PASSWORD_VAR]:
-                if v not in os.environ:
+                if v not in os.environ and self.LoginRequired:
                     raise EnvironmentVarError("Environment variable {} not defined".format(v))
 
     def run_build(self, namespace):
@@ -566,8 +566,8 @@ class _DockerBuildLayer(object):
         namespace = parser.parse_args()
 
         namespace.logger = self.configure_logging(namespace)
-        namespace.username = os.environ[self.USERNAME_VAR]
-        namespace.password = os.environ[self.PASSWORD_VAR]
+        namespace.username = os.environ.get(self.USERNAME_VAR)
+        namespace.password = os.environ.get(self.PASSWORD_VAR)
         namespace.docker = self.docker_client(namespace, timeout=namespace.timeout)
         if self.Registry:
             self.docker_login(namespace)
