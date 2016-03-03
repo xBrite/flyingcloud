@@ -53,7 +53,7 @@ class DockerResultError(FlyingCloudError):
     """Error in result from Docker Daemon"""
 
 
-class DockerBuildLayer(object):
+class _DockerBuildLayer(object):
     """Build a Docker image using SaltStack
 
     Can either build from a base image or from a Dockerfile.
@@ -84,18 +84,27 @@ class DockerBuildLayer(object):
     PASSWORD_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
 
     def main(self, defaults, *layer_classes, **kwargs):
+        self.check_root()
+        self.check_environment_variables()
+        namespace = self.parse_args(defaults, *layer_classes, **kwargs)
+        self.run_build(namespace)
+
+    @classmethod
+    def check_root(cls):
         if os.geteuid() != 0 and platform.system() == "Linux":
             raise NotSudoError("You must be root (use sudo)")
+
+    def check_environment_variables(self):
         if self.Registry:
             for v in [self.USERNAME_VAR, self.PASSWORD_VAR]:
                 if v not in os.environ:
                     raise EnvironmentVarError("Environment variable {} not defined".format(v))
-        namespace = self.parse_args(defaults, *layer_classes, **kwargs)
 
+    def run_build(self, namespace):
         namespace.logger.info("Build starting...")
         self.log_disk_usage(namespace)
         self.docker_info(namespace)
-        if namespace.layer_class.should_build(namespace):
+        if namespace.layer_inst.should_build(namespace):
             namespace.func(namespace)
         namespace.logger.info("Build finished")
 
@@ -519,7 +528,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('push_layer', True)
         defaults.setdefault('retries', 3)
-        defaults.setdefault('layer_class', self)
+        defaults.setdefault('layer_inst', self)
 
         parser.set_defaults(**defaults)
 
@@ -541,18 +550,18 @@ class DockerBuildLayer(object):
             help="Set terminal logging level to debug")
         subparsers = parser.add_subparsers(help="sub-command")
 
-        for layer_class in layer_classes:
-            classobj = type(layer_class).__name__ == 'classobj'
-            if classobj:
-                func = layer_class().build
+        for layer_class_or_inst in layer_classes:
+            if type(layer_class_or_inst).__name__ == 'classobj':
+                layer_inst = layer_class_or_inst()
             else:
-                func = layer_class.build
+                layer_inst = layer_class_or_inst
+            func = layer_inst.build
             subparser = subparsers.add_parser(
-                layer_class.CommandName, help=layer_class.Description)
+                layer_inst.CommandName, help=layer_inst.Description)
             subparser.set_defaults(
-                layer_class=layer_class,
+                layer_inst=layer_inst,
                 func=func)
-            layer_class.add_parser_options(subparser)
+            layer_inst.add_parser_options(subparser)
 
         namespace = parser.parse_args()
 
@@ -604,6 +613,5 @@ class DockerBuildLayer(object):
         return kwargs
 
 
-class NewLayer(DockerBuildLayer):
-    pass
-
+class BuildLayerBase(_DockerBuildLayer):
+    """Class to derive from"""

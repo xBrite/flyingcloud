@@ -2,19 +2,38 @@
 
 from __future__ import unicode_literals, absolute_import, print_function
 
+import imp
 import os
-import platform
-
-import sh
 import sys
-
 import yaml
 
-from .base import DockerBuildLayer, NewLayer, FlyingCloudError
+from .base import BuildLayerBase, FlyingCloudError
 
 
-def get_layer(layer_base_class, layer_name, layer_info):
-    layer = layer_base_class(layer_base_class.AppName, command_name=layer_name)
+def import_layer(layer_path):
+    try:
+        sys.path.insert(0, layer_path)
+        fp, filename, description = imp.find_module("layer")
+        module = imp.load_module("layer", fp, filename, description)
+        for name in dir(module):
+            obj = getattr(module, name)
+            if issubclass(obj, BuildLayerBase) and obj != BuildLayerBase:
+                return obj
+        raise ValueError("No subclass of DockerBuildLayer")
+    except ImportError as e:
+        print(e)
+        raise
+    finally:
+        sys.path.pop(0)
+
+
+def get_layer(layer_base_class, layer_name, layer_data):
+    layer_info, layer_path = layer_data["info"], layer_data["path"]
+    if os.path.exists(os.path.join(layer_path, "layer.py")):
+        layer_class = import_layer(layer_path)
+    else:
+        layer_class = layer_base_class
+    layer = layer_class(layer_base_class.AppName, command_name=layer_name)
     layer.__doc__ = "Parsed from {}".format(layer_name)
     layer.Description = layer_info.get('description')
     if not layer.Description:
@@ -23,28 +42,29 @@ def get_layer(layer_base_class, layer_name, layer_info):
     parent = layer_info.get("parent")
     if parent:
         layer.SourceImageBaseName = '{}_{}'.format(
-            layer_base_class.AppName, parent)
+            layer_class.AppName, parent)
     layer.set_layer_defaults()
+#   print(layer.__dict__)
 
     return layer
 
 
 def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
-    NewLayer.project_filename = project_name
-    NewLayer.USERNAME_VAR = project_info.get('username_varname', NewLayer.USERNAME_VAR)
-    NewLayer.PASSWORD_VAR = project_info.get('password_varname', NewLayer.PASSWORD_VAR)
-    NewLayer.Registry = project_info.get('registry', NewLayer.Registry)
-    NewLayer.RegistryDockerVersion = project_info.get('registry_docker_version', NewLayer.RegistryDockerVersion)
-    NewLayer.Organization = project_info.get('organization', NewLayer.Organization)
-    NewLayer.AppName = project_info.get('app_name', NewLayer.AppName)
-    NewLayer.LoginRequired = project_info.get('login_required', NewLayer.LoginRequired)
-    NewLayer.SquashLayer = project_info.get('squash_layer', NewLayer.SquashLayer)
-    NewLayer.PushLayer = project_info.get('push_layer', NewLayer.PushLayer)
-    NewLayer.PullLayer = project_info.get('pull_layer', NewLayer.PullLayer)
+    BuildLayerBase.project_filename = project_name
+    BuildLayerBase.USERNAME_VAR = project_info.get('username_varname', BuildLayerBase.USERNAME_VAR)
+    BuildLayerBase.PASSWORD_VAR = project_info.get('password_varname', BuildLayerBase.PASSWORD_VAR)
+    BuildLayerBase.Registry = project_info.get('registry', BuildLayerBase.Registry)
+    BuildLayerBase.RegistryDockerVersion = project_info.get('registry_docker_version', BuildLayerBase.RegistryDockerVersion)
+    BuildLayerBase.Organization = project_info.get('organization', BuildLayerBase.Organization)
+    BuildLayerBase.AppName = project_info.get('app_name', BuildLayerBase.AppName)
+    BuildLayerBase.LoginRequired = project_info.get('login_required', BuildLayerBase.LoginRequired)
+    BuildLayerBase.SquashLayer = project_info.get('squash_layer', BuildLayerBase.SquashLayer)
+    BuildLayerBase.PushLayer = project_info.get('push_layer', BuildLayerBase.PushLayer)
+    BuildLayerBase.PullLayer = project_info.get('pull_layer', BuildLayerBase.PullLayer)
 
     layers = []
     for layer_name in project_info["layers"]:
-        layers.append(get_layer(NewLayer, layer_name, layers_info[layer_name]))
+        layers.append(get_layer(BuildLayerBase, layer_name, layers_info[layer_name]))
 
     return layers
 
@@ -57,10 +77,11 @@ def get_project_info(project_root):
 
     layers_info = {}
     for layer_name in project_info['layers']:
-        layer_filename = os.path.join(project_root, "salt", layer_name, "layer.yaml")
+        layer_path = os.path.join(project_root, "salt", layer_name)
+        layer_filename = os.path.join(layer_path, "layer.yaml")
         with open(layer_filename) as fp:
             info = yaml.load(fp)
-            layers_info[layer_name] = info
+            layers_info[layer_name] = dict(info=info, path=layer_path)
 
     return project_name, project_info, layers_info
 
@@ -73,8 +94,7 @@ def configure_layers(project_root):
 
 
 def main():
-    if os.geteuid() != 0 and platform.system() == "Linux":
-        raise ValueError("Not root. Rerun command with sudo.")
+    BuildLayerBase.check_root()
 
     project_root = os.getcwd()
     base_dir = os.path.abspath(project_root)
@@ -90,7 +110,12 @@ def main():
         # TODO: argparse help
         raise
 
-    layers[0].main(
+    instance = layers[0]
+    instance.check_environment_variables()
+    namespace = instance.parse_args(
         defaults,
         *layers,
         description="Build Docker images using SaltStack")
+
+    instance = namespace.layer_inst
+    instance.run_build(namespace)

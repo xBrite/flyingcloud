@@ -3,8 +3,8 @@ layers:
   - opencv
   - pybase
   - sysbase
+  - testrunner
 
-# TODO: add 'test' layer, which requires Python code
 username_varname: EXAMPLE_DOCKER_REGISTRY_USERNAME
 password_varname: EXAMPLE_DOCKER_REGISTRY_PASSWORD
 registry: quay.io
