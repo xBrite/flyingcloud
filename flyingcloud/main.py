@@ -10,27 +10,32 @@ import yaml
 from .base import BuildLayerBase, FlyingCloudError
 
 
-def import_layer(layer_path):
+def import_class(implementation_filename, base_class):
+    impl_dir, impl_filename = os.path.split(implementation_filename)
+    module_name, _ = os.path.splitext(impl_filename)
+
     try:
-        sys.path.insert(0, layer_path)
-        fp, filename, description = imp.find_module("layer")
-        module = imp.load_module("layer", fp, filename, description)
+        sys.path.insert(0, impl_dir)
+        fp, filename, description = imp.find_module(module_name)
+        module = imp.load_module(module_name, fp, filename, description)
         for name in dir(module):
             obj = getattr(module, name)
-            if issubclass(obj, BuildLayerBase) and obj != BuildLayerBase:
-                return obj
-        raise ValueError("No subclass of DockerBuildLayer")
-    except ImportError as e:
-        print(e)
-        raise
+            if (type(obj) == type(base_class)
+                and issubclass(obj, base_class)
+                and obj != base_class):
+                    return obj
+        raise ValueError("No subclass of {0} in {1}".format(
+                base_class.__name__, implementation_filename))
     finally:
         sys.path.pop(0)
 
 
+
 def get_layer(layer_base_class, layer_name, layer_data):
     layer_info, layer_path = layer_data["info"], layer_data["path"]
-    if os.path.exists(os.path.join(layer_path, "layer.py")):
-        layer_class = import_layer(layer_path)
+    python_layer_filename = os.path.join(layer_path, "layer.py")
+    if os.path.exists(python_layer_filename):
+        layer_class = import_class(python_layer_filename, BuildLayerBase)
     else:
         layer_class = layer_base_class
     layer = layer_class(layer_base_class.AppName, command_name=layer_name)
