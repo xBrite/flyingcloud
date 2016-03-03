@@ -5,9 +5,10 @@ set -x
 if [ "$(uname)" == "Darwin" ]; then
     PLATFORM="darwin"
     DOCKER="docker"
+    MACHINE_NAME="${MACHINE_NAME:-default}"
     INTERFACE="${INTERFACE:-en0}"
     HOST_IP_ADDR="$(ifconfig $INTERFACE | awk '/inet /{print $2}')"
-    TARGET_IP_ADDR="$(docker-machine ip default)"
+    TARGET_IP_ADDR="$(docker-machine ip $MACHINE_NAME)"
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     PLATFORM="linux"
     DOCKER="sudo docker"
@@ -23,10 +24,14 @@ if [ "$APP" == "app" ]; then
     IMAGE="quay.io/cookbrite/flaskexample_app:latest"
     HOST_PORT="${HOST_PORT:-80}"
     TARGET_PORT="${TARGET_PORT:-8080}"
+    LOCAL_PORT="$TARGET_PORT"
     PUBLISH_PORT="${PUBLISH_PORT:-$TARGET_PORT:$HOST_PORT}"
     argv=(--publish="$PUBLISH_PORT")
     if [ "$PLATFORM" == "darwin" ]; then
-        docker-machine ssh default -f -N -L localhost:$TARGET_PORT:localhost:$TARGET_PORT
+        PORT_FORWARDING="-f -N -L $LOCAL_PORT:localhost:$TARGET_PORT"
+        if ! ps aux | grep "[s]sh.*$PORT_FORWARDING"; then
+            docker-machine ssh $MACHINE_NAME $PORT_FORWARDING
+        fi
     fi
 elif [ "$APP" == "opencv" ]; then
     IMAGE="quay.io/cookbrite/flaskexample_opencv:latest"
