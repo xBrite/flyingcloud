@@ -94,7 +94,7 @@ def main():
     )
 
     # TODO: discovery mechanism
-    ExampleBuildLayer.main(
+    AppLayer().main(
             defaults,
             SystemBaseLayer,
             PythonBaseLayer,

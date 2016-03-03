@@ -1,0 +1,5 @@
+description: Flask Example app
+parent: opencv
+exposed_ports:
+  - 80
+
