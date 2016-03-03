@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-#set -x
+set -x
 
 if [ "$(uname)" == "Darwin" ]; then
     PLATFORM="darwin"
@@ -19,13 +19,15 @@ fi
 APP="$1"
 argv=()
 
-if [ "$APP" == "example" ]; then
-    IMAGE="quay.io/cookbrite/flaskexample_flask_example:latest"
+if [ "$APP" == "app" ]; then
+    IMAGE="quay.io/cookbrite/flaskexample_app:latest"
     HOST_PORT="${HOST_PORT:-80}"
     TARGET_PORT="${TARGET_PORT:-8080}"
-    PUBLISH_PORT="${PUBLISH_PORT:-$HOST_PORT:$TARGET_PORT}"
+    PUBLISH_PORT="${PUBLISH_PORT:-$TARGET_PORT:$HOST_PORT}"
     argv=(--publish="$PUBLISH_PORT")
-    echo "Exposing $PUBLISH_PORT on $TARGET_IP_ADDR"
+    if [ "$PLATFORM" == "darwin" ]; then
+        docker-machine ssh default -f -N -L localhost:$TARGET_PORT:localhost:$TARGET_PORT
+    fi
 elif [ "$APP" == "opencv" ]; then
     IMAGE="quay.io/cookbrite/flaskexample_opencv:latest"
 elif [ "$APP" == "pybase" ]; then
@@ -35,9 +37,8 @@ elif [ "$APP" == "sysbase" ]; then
 fi
 
 if [ -z "$IMAGE" ]; then
-    echo 'You must provide an app parameter ("example", "opencv", "pybase", "sysbase") or set $IMAGE'
+    echo 'You must provide an app parameter ("app", "opencv", "pybase", "sysbase") or set $IMAGE'
     exit 1
 fi
-
 
 $DOCKER run -d ${argv[@]} "$IMAGE"
