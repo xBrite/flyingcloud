@@ -8,23 +8,23 @@ function flyingcloud() {
         exit 1
     fi
 
-    # TODO: have main.py invoke sudo with correct environment variables
-    declare -a envvars=( \
-        EXAMPLE_DOCKER_REGISTRY_USERNAME \
-        EXAMPLE_DOCKER_REGISTRY_PASSWORD \
-        VIRTUAL_ENV \
-        TMPDIR
-    )
-    argv=()
-
-    for ev in ${envvars[@]}; do
-        value="$(eval "echo \$$ev")"
-        argv+=("$ev=$value")
-    done
-
     if [ "$(uname)" == "Darwin" ]; then
         $VIRTUAL_ENV/bin/flyingcloud $@
     elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+        # TODO: have main.py invoke sudo with correct environment variables
+        declare -a envvars=( \
+            EXAMPLE_DOCKER_REGISTRY_USERNAME \
+            EXAMPLE_DOCKER_REGISTRY_PASSWORD \
+            VIRTUAL_ENV \
+            TMPDIR
+        )
+        argv=()
+
+        for ev in ${envvars[@]}; do
+            value="$(eval "echo \$$ev")"
+            argv+=("$ev=$value")
+        done
+
         sudo ${argv[@]} $VIRTUAL_ENV/bin/flyingcloud $@
     fi
 }
