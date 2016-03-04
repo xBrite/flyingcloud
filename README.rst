@@ -31,13 +31,12 @@ Contributing
 
 
 We welcome contributions. This project is in an early stage and under heavy development. 
-To contribute, contact the developers directly:
+To contribute, join the Google Group or file a pull request.
 
-* Adam Feuer <adam@cookbrite.com>
-* George Reilly <george@cookbrite.com>
+* `FlyingCloud Google Group <https://groups.google.com/forum/#!forum/flyingcloud-users>`_
 
 =======
 License
 =======
 
-* [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0)
+* `Apache License v2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_
