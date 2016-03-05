@@ -5,10 +5,10 @@ set -x
 if [ "$(uname)" == "Darwin" ]; then
     PLATFORM="darwin"
     DOCKER="docker"
-    MACHINE_NAME="${MACHINE_NAME:-default}"
+    DOCKER_MACHINE_NAME="${DOCKER_MACHINE_NAME:-default}"
     INTERFACE="${INTERFACE:-en0}"
     HOST_IP_ADDR="$(ifconfig $INTERFACE | awk '/inet /{print $2}')"
-    TARGET_IP_ADDR="$(docker-machine ip $MACHINE_NAME)"
+    TARGET_IP_ADDR="$(docker-machine ip $DOCKER_MACHINE_NAME)"
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     PLATFORM="linux"
     DOCKER="sudo docker"
@@ -30,7 +30,7 @@ if [ "$APP" == "app" ]; then
     if [ "$PLATFORM" == "darwin" ]; then
         PORT_FORWARDING="-f -N -L $LOCAL_PORT:localhost:$TARGET_PORT"
         if ! ps aux | grep "[s]sh.*$PORT_FORWARDING"; then
-            docker-machine ssh $MACHINE_NAME $PORT_FORWARDING
+            docker-machine ssh $DOCKER_MACHINE_NAME $PORT_FORWARDING
         fi
     fi
 elif [ "$APP" == "opencv" ]; then
