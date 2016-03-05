@@ -4,15 +4,22 @@ from setuptools import setup, find_packages
 
 setup(
     name='flyingcloud',
-    version='0.1.15',
+    version='0.2.0',
     description='Build Docker images using SaltStack',
     author='CookBrite, Inc.',
     author_email='flyingcloud-admin@cookbrite.com',
     license='Apache Software License 2.0',
     url='https://github.com/cookbrite/flyingcloud',
     packages=find_packages(exclude='tests'),
-    install_requires=['docker-py', 'requests', 'sh', 'six'],
-    classifiers=['Programming Language :: Python',
+    install_requires=[
+        'docker-py',
+        'pyyaml',
+        'requests',
+        'sh',
+        'six',
+    ],
+    classifiers=[
+        'Programming Language :: Python',
         'Programming Language :: Python :: 2.7',
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
@@ -23,7 +30,13 @@ setup(
         'Operating System :: POSIX :: Linux',
         'Topic :: Utilities',
         'Topic :: System :: Clustering',
-        'Topic :: System :: Distributed Computing'],
+        'Topic :: System :: Distributed Computing',
+    ],
     long_description=open('README.rst').read(),
     keywords="docker saltstack devops automation",
+    entry_points={
+        'console_scripts': [
+            'flyingcloud = flyingcloud.main:main',
+        ]
+    },
     )
