@@ -540,7 +540,7 @@ class _DockerBuildLayer(object):
         # TODO: review setting up base_dir, etc when the invoking script is in a different directory
         defaults.setdefault('base_dir', os.path.abspath(os.path.dirname(__file__)))
         defaults.setdefault('salt_dir', os.path.join(defaults['base_dir'], "salt"))
-        defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "build_docker.log"))
+        defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "flyingcloud.log"))
         defaults.setdefault('timestamp_format', '%Y-%m-%dt%H%M%Sz')
         defaults.setdefault(
             'timestamp', datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
