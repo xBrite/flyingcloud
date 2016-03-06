@@ -153,7 +153,7 @@ class _DockerBuildLayer(object):
 
         if not os.path.exists(salt_dir):
             message = "Configuration directory %s does not exist, failing!" % salt_dir
-            namespace.logger.error(message)
+            namespace.logger.error("%s", message)
             raise CommandError(message)
 
         self.layer_latest_name = "{}:latest".format(self.container_name)
@@ -435,7 +435,7 @@ class _DockerBuildLayer(object):
         latest_image_name = image_name + ":latest"
         for image in images:
             repo_tags = set(image['RepoTags'])
-            namespace.logger.info(repo_tags)
+            namespace.logger.info("repo tags: %r", repo_tags)
             if latest_image_name in repo_tags:
                 repo_tags.remove(latest_image_name)
                 result = repo_tags.pop()
@@ -606,7 +606,7 @@ class _DockerBuildLayer(object):
         pass
 
     def docker_client(self, namespace, *args, **kwargs):
-        namespace.logger.info("Platform is '{}'.".format(platform.system()))
+        namespace.logger.info("Platform is '%s'.", platform.system())
         kwargs.setdefault('timeout', self.DefaultTimeout)
         if self.registry_config['RegistryDockerVersion']:
             kwargs.setdefault('version', self.registry_config['RegistryDockerVersion'])
@@ -622,8 +622,8 @@ class _DockerBuildLayer(object):
             docker_machine = sh.Command("docker-machine")
             docker_machine("inspect", "default", _out=output)
             docker_machine_json = output.getvalue()
-        namespace.logger.debug("docker-machine json: {}".format(docker_machine_json))
-        namespace.logger.debug("docker-machine json type: {}".format(type(docker_machine_json)))
+        namespace.logger.debug("docker-machine json: %r", docker_machine_json)
+        namespace.logger.debug("docker-machine json type: %r", type(docker_machine_json))
         docker_machine_json = json.loads(docker_machine_json)
         docker_machine_tls = docker_machine_json['HostOptions']['AuthOptions']
         docker_machine_ip = docker_machine_json['Driver']['IPAddress']
@@ -635,7 +635,7 @@ class _DockerBuildLayer(object):
             ca_cert=docker_machine_tls['CaCertPath'],
             assert_hostname=False,
             verify=True)
-        namespace.logger.info("Docker-Machine: using {}".format(kwargs))
+        namespace.logger.info("Docker-Machine: using %r", kwargs)
         return kwargs
 
 
