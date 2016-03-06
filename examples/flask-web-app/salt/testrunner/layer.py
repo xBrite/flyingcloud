@@ -19,9 +19,8 @@ class TestRunner(BuildLayerBase):
         else:
             raise ValueError("Unknown test_type: {}".format(test_type))
 
-        image_name = self.SourceImageName
-        if self.PullLayer:
-            self.docker_pull(namespace, image_name)
+        if self.registry_config['PullLayer']:
+            self.docker_pull(namespace, self.source_image_name)
 
         environment = {}
         if namespace.base_url:
@@ -30,7 +29,7 @@ class TestRunner(BuildLayerBase):
         namespace.logger.info(
             "Running tests: type=%s, environment=%r", test_type, environment)
         container_id = self.docker_create_container(
-            namespace, None, image_name, environment=environment)
+            namespace, None, self.source_image_name, environment=environment)
         self.docker_start(namespace, container_id)
 
         cmd = ["/venv/bin/py.test", "--tb=long", test_dir]
