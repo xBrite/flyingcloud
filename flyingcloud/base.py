@@ -66,6 +66,8 @@ class _DockerBuildLayer(object):
     LayerName = None
     LayerSuffix = None
     CommandName = None
+    Description = None
+    Help = None
     SourceImageName = None
     TargetImageName = None  # usually tagged with ":latest"
     SaltStateDir = None
@@ -75,7 +77,6 @@ class _DockerBuildLayer(object):
     Registry = ''
     RegistryDockerVersion = None
     LoginRequired = True
-    Description = None
     PullLayer = True
     PushLayer = False
     SquashLayer = False
@@ -558,7 +559,9 @@ class _DockerBuildLayer(object):
                 layer_inst = layer_class_or_inst
             func = layer_inst.build
             subparser = subparsers.add_parser(
-                layer_inst.CommandName, help=layer_inst.Description)
+                layer_inst.CommandName,
+                description=layer_inst.Description,
+                help=layer_inst.Help)
             subparser.set_defaults(
                 layer_inst=layer_inst,
                 func=func)

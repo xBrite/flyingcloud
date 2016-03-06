@@ -41,6 +41,7 @@ def get_layer(layer_base_class, layer_name, layer_data):
     layer = layer_class(layer_base_class.AppName, command_name=layer_name)
     layer.__doc__ = "Parsed from {}".format(layer_name)
     layer.Description = layer_info.get('description')
+    layer.Help = layer_info.get('help')
     if not layer.Description:
         raise FlyingCloudError("layer %s is missing a description." % layer_name)
     layer.ExposedPorts = layer_info.get('exposed_ports')
@@ -56,16 +57,16 @@ def get_layer(layer_base_class, layer_name, layer_data):
 
 def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
     BuildLayerBase.project_filename = project_name
-    BuildLayerBase.USERNAME_VAR = project_info.get('username_varname', BuildLayerBase.USERNAME_VAR)
-    BuildLayerBase.PASSWORD_VAR = project_info.get('password_varname', BuildLayerBase.PASSWORD_VAR)
+    BuildLayerBase.AppName = project_info.get('app_name', BuildLayerBase.AppName)
+    BuildLayerBase.Organization = project_info.get('organization', BuildLayerBase.Organization)
     BuildLayerBase.Registry = project_info.get('registry', BuildLayerBase.Registry)
     BuildLayerBase.RegistryDockerVersion = project_info.get('registry_docker_version', BuildLayerBase.RegistryDockerVersion)
-    BuildLayerBase.Organization = project_info.get('organization', BuildLayerBase.Organization)
-    BuildLayerBase.AppName = project_info.get('app_name', BuildLayerBase.AppName)
     BuildLayerBase.LoginRequired = project_info.get('login_required', BuildLayerBase.LoginRequired)
     BuildLayerBase.SquashLayer = project_info.get('squash_layer', BuildLayerBase.SquashLayer)
     BuildLayerBase.PushLayer = project_info.get('push_layer', BuildLayerBase.PushLayer)
     BuildLayerBase.PullLayer = project_info.get('pull_layer', BuildLayerBase.PullLayer)
+    BuildLayerBase.USERNAME_VAR = project_info.get('username_varname', BuildLayerBase.USERNAME_VAR)
+    BuildLayerBase.PASSWORD_VAR = project_info.get('password_varname', BuildLayerBase.PASSWORD_VAR)
 
     layers = []
     for layer_name in project_info["layers"]:

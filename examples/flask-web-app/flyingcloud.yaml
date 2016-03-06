@@ -1,9 +1,9 @@
 layers:
+  - testrunner
   - app
   - opencv
   - pybase
   - sysbase
-  - testrunner
 
 app_name: 'flaskexample'
 username_varname: EXAMPLE_DOCKER_REGISTRY_USERNAME

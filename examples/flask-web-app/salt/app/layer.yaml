@@ -1,4 +1,7 @@
-description: Flask Example app
+help: Flask Example App Layer
+description: >
+  A runnable example app using Flask and Nginx to demonstrate
+  a simple use of OpenCV.
 parent: opencv
 exposed_ports:
   - 80

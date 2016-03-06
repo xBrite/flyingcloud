@@ -1,2 +1,5 @@
-description: Flask Example app Test Runner
+help: Test Runner Layer
+description: >
+  Flask Example App Test Runner, which runs
+  unit and acceptance tests inside the Docker container.
 parent: app
