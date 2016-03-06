@@ -61,25 +61,26 @@ class _DockerBuildLayer(object):
     Finished layers are pushed to the registry.
     """
     # Override these as necessary
+    AppName = None
+    Organization = None
+    LayerName = None
+    LayerSuffix = None
+    CommandName = None
+    SourceImageName = None
+    TargetImageName = None  # usually tagged with ":latest"
+    SaltStateDir = None
+    ExposedPorts = None
+    SourceImageBaseName = None
+
     Registry = ''
     RegistryDockerVersion = None
     LoginRequired = True
-    Organization = None
-    AppName = None
-    LayerName = None
     Description = None
     PullLayer = True
     PushLayer = False
     SquashLayer = False
-    LayerSuffix = None
-    SourceImageName = None
-    TargetImageName = None  # usually tagged with ":latest"
-    SaltStateDir = None
-    CommandName = None
     SaltExecTimeout = 45 * 60  # seconds, for long-running commands
     DefaultTimeout = 5 * 60  # need longer than default timeout for most commands
-    ExposedPorts = None
-    SourceImageBaseName = None
     USERNAME_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
     PASSWORD_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
 
