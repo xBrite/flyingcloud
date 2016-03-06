@@ -31,14 +31,17 @@ def import_class(implementation_filename, base_class):
 
 
 
-def get_layer(layer_base_class, layer_name, layer_data):
+def get_layer(layer_base_class, layer_name, layer_data, registry_config):
     layer_info, layer_path = layer_data["info"], layer_data["path"]
     python_layer_filename = os.path.join(layer_path, "layer.py")
     if os.path.exists(python_layer_filename):
         layer_class = import_class(python_layer_filename, BuildLayerBase)
     else:
         layer_class = layer_base_class
-    layer = layer_class(layer_base_class.AppName, command_name=layer_name)
+    layer = layer_class(
+        layer_base_class.AppName,
+        command_name=layer_name,
+        registry_config=registry_config)
     layer.__doc__ = "Parsed from {}".format(layer_name)
     layer.Description = layer_info.get('description')
     layer.Help = layer_info.get('help')
@@ -61,19 +64,23 @@ def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
         BuildLayerBase.AppName = project_info['app_name']
     else:
         raise FlyingCloudError("Missing 'app_name'")
-    BuildLayerBase.Organization = project_info.get('organization', BuildLayerBase.Organization)
-    BuildLayerBase.Registry = project_info.get('registry', BuildLayerBase.Registry)
-    BuildLayerBase.RegistryDockerVersion = project_info.get('registry_docker_version', BuildLayerBase.RegistryDockerVersion)
-    BuildLayerBase.LoginRequired = project_info.get('login_required', BuildLayerBase.LoginRequired)
-    BuildLayerBase.SquashLayer = project_info.get('squash_layer', BuildLayerBase.SquashLayer)
-    BuildLayerBase.PushLayer = project_info.get('push_layer', BuildLayerBase.PushLayer)
-    BuildLayerBase.PullLayer = project_info.get('pull_layer', BuildLayerBase.PullLayer)
-    BuildLayerBase.USERNAME_VAR = project_info.get('username_varname', BuildLayerBase.USERNAME_VAR)
-    BuildLayerBase.PASSWORD_VAR = project_info.get('password_varname', BuildLayerBase.PASSWORD_VAR)
+    registry_config = dict()
+    for rk, yk in [
+            ('Host', 'registry'),
+            ('Organization', 'organization'),
+            ('RegistryDockerVersion', 'registry_docker_version'),
+            ('LoginRequired', 'login_required'),
+            ('PullLayer', 'pull_layer'),
+            ('PushLayer', 'push_layer'),
+            ('SquashLayer', 'squash_layer'),
+        ]:
+        value = project_info.get(yk, None)
+        if value is not None:
+            registry_config[rk] = value
 
-    layers = []
-    for layer_name in project_info["layers"]:
-        layers.append(get_layer(BuildLayerBase, layer_name, layers_info[layer_name]))
+    layers = [get_layer(BuildLayerBase, layer_name,
+                        layers_info[layer_name], registry_config)
+              for layer_name in project_info["layers"]]
 
     return layers
 

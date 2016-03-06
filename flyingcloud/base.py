@@ -5,13 +5,13 @@
 import argparse
 import datetime
 import glob
-from io import BytesIO
 import json
 import tempfile
 
-import StringIO
 import docker
 import logging
+
+import io
 import os
 import platform
 import requests
@@ -62,7 +62,6 @@ class _DockerBuildLayer(object):
     """
     # Override these as necessary
     AppName = None
-    Organization = None
 
     CommandName = None
     SaltStateDir = None
@@ -76,17 +75,21 @@ class _DockerBuildLayer(object):
     TargetImageName = None  # usually tagged with ":latest"
     ExposedPorts = None
 
-    Registry = ''
-    RegistryDockerVersion = None
-    LoginRequired = True
-    PullLayer = True
-    PushLayer = False
-    SquashLayer = False
-    USERNAME_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
-    PASSWORD_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
-
     SaltExecTimeout = 45 * 60  # seconds, for long-running commands
     DefaultTimeout = 5 * 60  # need longer than default timeout for most commands
+
+    USERNAME_ENV_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
+    PASSWORD_ENV_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
+
+    RegistryConfig = dict(
+        Host='',
+        Organization=None,
+        RegistryDockerVersion=None,
+        LoginRequired=True,
+        PullLayer=True,
+        PushLayer=False,
+        SquashLayer=False,
+    )
 
     def main(self, defaults, *layer_classes, **kwargs):
         self.check_root()
@@ -100,9 +103,9 @@ class _DockerBuildLayer(object):
             raise NotSudoError("You must be root (use sudo)")
 
     def check_environment_variables(self):
-        if self.Registry:
-            for v in [self.USERNAME_VAR, self.PASSWORD_VAR]:
-                if v not in os.environ and self.LoginRequired:
+        if self.registry_config['Host'] and self.registry_config['LoginRequired']:
+            for v in [self.USERNAME_ENV_VAR, self.PASSWORD_ENV_VAR]:
+                if v not in os.environ:
                     raise EnvironmentVarError("Environment variable {} not defined".format(v))
 
     def run_build(self, namespace):
@@ -114,16 +117,20 @@ class _DockerBuildLayer(object):
         namespace.logger.info("Build finished")
 
     def __init__(self, appname=None, command_name=None,
-                 layer_suffix=None, salt_state_dir=None):
+                 layer_suffix=None, salt_state_dir=None, registry_config=None):
         self.AppName = appname or self.AppName
         self.CommandName = command_name or self.CommandName
         self.SaltStateDir = salt_state_dir or self.SaltStateDir or self.CommandName
         self.LayerSuffix = layer_suffix or self.LayerSuffix or self.CommandName
+        self.registry_config = registry_config or self.RegistryConfig
         assert self.AppName
         assert self.LayerSuffix
         self.ContainerName = "{}_{}".format(self.AppName, self.LayerSuffix)
-        if self.Registry and self.Organization:
-            self.ImageName = "{}/{}/{}".format(self.Registry, self.Organization, self.ContainerName)
+        if self.registry_config['Host'] and self.registry_config['Organization']:
+            self.ImageName = "{}/{}/{}".format(
+                self.registry_config['Host'],
+                self.registry_config['Organization'],
+                self.ContainerName)
         else:
             self.ImageName = self.ContainerName
         # These require the command-line args to properly initialize
@@ -143,9 +150,11 @@ class _DockerBuildLayer(object):
 
     def set_layer_defaults(self):
         self.TargetImagePrefixName = "{}/{}/{}_{}".format(
-            self.Registry, self.Organization, self.AppName, self.CommandName)
+            self.registry_config['Host'], self.registry_config['Organization'],
+            self.AppName, self.CommandName)
         self.source_image_name = self.SourceImageName = "{}/{}/{}".format(
-            self.Registry, self.Organization, self.SourceImageBaseName)
+            self.registry_config['Host'], self.registry_config['Organization'],
+            self.SourceImageBaseName)
         self.TargetImageName = self.TargetImagePrefixName + ":latest"
 
     def build(self, namespace):
@@ -167,7 +176,7 @@ class _DockerBuildLayer(object):
         else:
             self.expose_ports(namespace)
 
-        if self.PullLayer:
+        if self.registry_config['PullLayer']:
             self.docker_pull(namespace, self.source_image_name)
 
         container_name = self.salt_highstate(
@@ -176,7 +185,7 @@ class _DockerBuildLayer(object):
             result_image_name=self.layer_timestamp_name,
             salt_dir=salt_dir)
         layer_strong_name = None
-        if namespace.squash_layer and self.SquashLayer:
+        if namespace.squash_layer and self.registry_config['SquashLayer']:
             layer_strong_name = self.docker_squash(
                 namespace,
                 image_name=self.layer_timestamp_name,
@@ -192,7 +201,7 @@ class _DockerBuildLayer(object):
         # TODO: make the following lines work consistently; on some Linux boxes, they don't work
         # if remove_layer:
         #     self.docker_remove_image(namespace, remove_layer)
-        if namespace.push_layer and self.PushLayer:
+        if namespace.push_layer and self.registry_config['PushLayer']:
             self.docker_push(
                 namespace,
                 layer_strong_name)
@@ -219,7 +228,7 @@ class _DockerBuildLayer(object):
                 EXPOSE {}
             """.format(self.SourceImageName, port_list)
             namespace.logger.info("Exposing ports: %s", port_list)
-            fileobj = BytesIO(Dockerfile.encode('utf-8'))
+            fileobj = io.BytesIO(Dockerfile.encode('utf-8'))
             self.build_dockerfile(namespace, self.layer_timestamp_name, fileobj=fileobj)
 
     def salt_states_exist(self, salt_dir):
@@ -486,13 +495,19 @@ class _DockerBuildLayer(object):
         else:
             raise DockerResultError(give_up_message)
 
-    def docker_login(self, namespace):
-        assert not self.LoginRequired or namespace.username, "No username"
-        assert not self.LoginRequired or namespace.password, "No password"
-        if namespace.username and namespace.password:
-            namespace.logger.info("Logging in to registry '%s' as user '%s'", self.Registry, namespace.username)
-            return namespace.docker.login(
-                username=namespace.username, password=namespace.password, registry=self.Registry)
+    def docker_login(self, namespace, username, password, registry):
+        if registry:
+            if username and password:
+                namespace.logger.info(
+                    "Logging in to registry '%s' as user '%s'",
+                    registry, namespace.username)
+                return namespace.docker.login(
+                    username=username,
+                    password=password,
+                    registry=registry)
+            elif self.registry_config['LoginRequired']:
+                assert username, "No username"
+                assert password, "No password"
 
     def docker_info(self, namespace):
         info = namespace.docker.info()
@@ -573,11 +588,15 @@ class _DockerBuildLayer(object):
         namespace = parser.parse_args()
 
         namespace.logger = self.configure_logging(namespace)
-        namespace.username = os.environ.get(self.USERNAME_VAR)
-        namespace.password = os.environ.get(self.PASSWORD_VAR)
+        namespace.username = os.environ.get(self.USERNAME_ENV_VAR)
+        namespace.password = os.environ.get(self.PASSWORD_ENV_VAR)
         namespace.docker = self.docker_client(namespace, timeout=namespace.timeout)
-        if self.Registry:
-            self.docker_login(namespace)
+
+        self.docker_login(
+            namespace,
+            namespace.username,
+            namespace.password,
+            registry=self.registry_config['Host'])
 
         self.add_additional_configuration(namespace)
 
@@ -590,26 +609,27 @@ class _DockerBuildLayer(object):
     def docker_client(self, namespace, *args, **kwargs):
         namespace.logger.info("Platform is '{}'.".format(platform.system()))
         kwargs.setdefault('timeout', self.DefaultTimeout)
-        if self.RegistryDockerVersion:
-            kwargs.setdefault('version', self.RegistryDockerVersion)
+        if self.registry_config['RegistryDockerVersion']:
+            kwargs.setdefault('version', self.registry_config['RegistryDockerVersion'])
         if platform.system() == "Darwin":
+            # TODO: Windows
             kwargs = self.get_docker_machine_client(namespace, **kwargs)
         namespace.logger.debug("Constructing docker client object with %s", kwargs)
         return docker.Client(*args, **kwargs)
 
     def get_docker_machine_client(self, namespace, **kwargs):
         # TODO: better error handling
-        docker_machine = sh.Command("docker-machine")
-        output = StringIO.StringIO()
-        docker_machine("inspect", "default", _out=output)
-        docker_machine_json = output.getvalue()
+        with io.BytesIO() as output:
+            docker_machine = sh.Command("docker-machine")
+            docker_machine("inspect", "default", _out=output)
+            docker_machine_json = output.getvalue()
         namespace.logger.debug("docker-machine json: {}".format(docker_machine_json))
         namespace.logger.debug("docker-machine json type: {}".format(type(docker_machine_json)))
         docker_machine_json = json.loads(docker_machine_json)
         docker_machine_tls = docker_machine_json['HostOptions']['AuthOptions']
         docker_machine_ip = docker_machine_json['Driver']['IPAddress']
-        base_url = 'https://' + docker_machine_ip + ':2376'
-        kwargs['base_url'] = base_url
+        # Use docker-s port. TODO: IPv6?
+        kwargs['base_url'] = 'https://' + docker_machine_ip + ':2376'
         kwargs['tls'] = docker.tls.TLSConfig(
             client_cert=(docker_machine_tls['ClientCertPath'],
                          docker_machine_tls['ClientKeyPath']),
