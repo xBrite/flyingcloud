@@ -61,20 +61,6 @@ class _DockerBuildLayer(object):
     Finished layers are pushed to the registry.
     """
     # Override these as necessary
-    AppName = None
-
-    CommandName = None
-    SaltStateDir = None
-    LayerSuffix = None
-
-    Help = None
-    Description = None
-
-    SourceImageBaseName = None
-    SourceImageName = None
-    TargetImageName = None  # usually tagged with ":latest"
-    ExposedPorts = None
-
     SaltExecTimeout = 45 * 60  # seconds, for long-running commands
     DefaultTimeout = 5 * 60  # need longer than default timeout for most commands
 
@@ -82,7 +68,7 @@ class _DockerBuildLayer(object):
     PASSWORD_ENV_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
 
     RegistryConfig = dict(
-        Host='',
+        Host=None,
         Organization=None,
         RegistryDockerVersion=None,
         LoginRequired=True,
@@ -90,6 +76,41 @@ class _DockerBuildLayer(object):
         PushLayer=False,
         SquashLayer=False,
     )
+
+    def __init__(
+            self,
+            app_name,
+            layer_name,
+            source_image_base_name,
+            help,
+            description=None,
+            exposed_ports=None,
+            registry_config=None,
+            source_version_tag="latest"
+    ):
+        self.app_name = app_name
+        self.layer_name = layer_name
+        self.source_image_base_name = source_image_base_name
+        self.help = help
+        self.description = description
+        self.exposed_ports = exposed_ports
+        self.registry_config = registry_config or self.RegistryConfig
+
+        self.container_name = "{}_{}".format(self.app_name, self.layer_name)
+        if source_image_base_name:
+            self.source_image_name = "{}:{}".format(
+                self.source_image_base_name, source_version_tag)
+        else:
+            self.source_image_name = None
+        if self.registry_config['Host'] and self.registry_config['Organization']:
+            if self.source_image_name:
+                self.source_image_name = "{}/{}/{}".format(
+                    self.registry_config['Host'],
+                    self.registry_config['Organization'],
+                    self.source_image_name)
+
+        # These require the command-line args to properly initialize
+        self.layer_latest_name = self.layer_timestamp_name = self.layer_squashed_name = None
 
     def main(self, defaults, *layer_classes, **kwargs):
         self.check_root()
@@ -99,7 +120,7 @@ class _DockerBuildLayer(object):
 
     @classmethod
     def check_root(cls):
-        if os.geteuid() != 0 and platform.system() == "Linux":
+        if platform.system() == "Linux" and os.geteuid() != 0 :
             raise NotSudoError("You must be root (use sudo)")
 
     def check_environment_variables(self):
@@ -116,27 +137,6 @@ class _DockerBuildLayer(object):
             namespace.func(namespace)
         namespace.logger.info("Build finished")
 
-    def __init__(self, appname=None, command_name=None,
-                 layer_suffix=None, salt_state_dir=None, registry_config=None):
-        self.AppName = appname or self.AppName
-        self.CommandName = command_name or self.CommandName
-        self.SaltStateDir = salt_state_dir or self.SaltStateDir or self.CommandName
-        self.LayerSuffix = layer_suffix or self.LayerSuffix or self.CommandName
-        self.registry_config = registry_config or self.RegistryConfig
-        assert self.AppName
-        assert self.LayerSuffix
-        self.ContainerName = "{}_{}".format(self.AppName, self.LayerSuffix)
-        if self.registry_config['Host'] and self.registry_config['Organization']:
-            self.ImageName = "{}/{}/{}".format(
-                self.registry_config['Host'],
-                self.registry_config['Organization'],
-                self.ContainerName)
-        else:
-            self.ImageName = self.ContainerName
-        # These require the command-line args to properly initialize
-        self.layer_latest_name = self.layer_timestamp_name = self.layer_squashed_name = None
-        self.source_image_name = self.SourceImageName
-
     def should_build(self, namespace):
         return True
 
@@ -148,42 +148,37 @@ class _DockerBuildLayer(object):
         """Override if you need special handling"""
         pass
 
-    def set_layer_defaults(self):
-        self.TargetImagePrefixName = "{}/{}/{}_{}".format(
-            self.registry_config['Host'], self.registry_config['Organization'],
-            self.AppName, self.CommandName)
-        self.source_image_name = self.SourceImageName = "{}/{}/{}".format(
-            self.registry_config['Host'], self.registry_config['Organization'],
-            self.SourceImageBaseName)
-        self.TargetImageName = self.TargetImagePrefixName + ":latest"
-
     def build(self, namespace):
-        salt_dir = os.path.abspath(os.path.join(namespace.salt_dir, self.SaltStateDir))
+        salt_dir = os.path.abspath(os.path.join(namespace.salt_dir, self.layer_name))
 
         if not os.path.exists(salt_dir):
             message = "Configuration directory %s does not exist, failing!" % salt_dir
             namespace.logger.error(message)
             raise CommandError(message)
 
-        self.layer_latest_name = "{}:latest".format(self.ImageName)
-        self.layer_timestamp_name = "{}:{}".format(self.ImageName, namespace.timestamp)
+        self.layer_latest_name = "{}:latest".format(self.container_name)
+        self.layer_timestamp_name = "{}:{}".format(self.container_name, namespace.timestamp)
         self.layer_squashed_name = "{}-sq".format(self.layer_timestamp_name)
 
         self.initialize_build(namespace, salt_dir)
-        dockerfile = self.get_dockerfile(salt_dir)
-        if dockerfile:
-            self.auto_build_dockerfile(namespace, dockerfile)
-        else:
-            self.expose_ports(namespace)
 
         if self.registry_config['PullLayer']:
             self.docker_pull(namespace, self.source_image_name)
 
-        container_name = self.salt_highstate(
-            namespace, self.ContainerName,
-            source_image_name=self.source_image_name or self.ImageName,
+        dockerfile = self.get_dockerfile(salt_dir)
+        if dockerfile:
+            namespace.logger.info("Building %s", dockerfile)
+            self.source_image_name = self.build_dockerfile(
+                namespace, tag=self.layer_timestamp_name, dockerfile=dockerfile)
+        else:
+            self.do_expose_ports(namespace)
+
+        target_container_name = self.salt_highstate(
+            namespace, self.container_name,
+            source_image_name=self.source_image_name or self.container_name,
             result_image_name=self.layer_timestamp_name,
             salt_dir=salt_dir)
+
         layer_strong_name = None
         if namespace.squash_layer and self.registry_config['SquashLayer']:
             layer_strong_name = self.docker_squash(
@@ -197,7 +192,8 @@ class _DockerBuildLayer(object):
             namespace.logger.info("Not squashing layer %s", layer_strong_name)
             remove_layer = None
             self.docker_tag(namespace, layer_strong_name, "latest")
-        self.run_command(namespace, layer_strong_name, container_name)
+        self.run_command(namespace, layer_strong_name, target_container_name)
+
         # TODO: make the following lines work consistently; on some Linux boxes, they don't work
         # if remove_layer:
         #     self.docker_remove_image(namespace, remove_layer)
@@ -210,52 +206,55 @@ class _DockerBuildLayer(object):
                 self.layer_latest_name)
         else:
             namespace.logger.info("Not pushing Docker layers.")
+
         return layer_strong_name
 
     def get_dockerfile(self, salt_dir):
         df = os.path.join(salt_dir, "Dockerfile")
         return df if os.path.exists(df) else None
 
-    def auto_build_dockerfile(self, namespace, dockerfile):
-        namespace.logger.info("Building %s", dockerfile)
-        self.source_image_name = self.build_dockerfile(namespace, self.layer_timestamp_name, dockerfile=dockerfile)
-
-    def expose_ports(self, namespace):
-        if self.ExposedPorts:
-            port_list = " ".join(str(p) for p in self.ExposedPorts)
+    def do_expose_ports(self, namespace):
+        if self.exposed_ports:
+            port_list = " ".join(str(p) for p in self.exposed_ports)
             Dockerfile = """
                 FROM {}
                 EXPOSE {}
-            """.format(self.SourceImageName, port_list)
+            """.format(self.source_image_name, port_list)
             namespace.logger.info("Exposing ports: %s", port_list)
-            fileobj = io.BytesIO(Dockerfile.encode('utf-8'))
-            self.build_dockerfile(namespace, self.layer_timestamp_name, fileobj=fileobj)
+            with io.BytesIO(Dockerfile.encode('utf-8')) as fileobj:
+                return self.build_dockerfile(
+                    namespace, tag=self.layer_timestamp_name, fileobj=fileobj)
 
     def salt_states_exist(self, salt_dir):
         files = glob.glob(os.path.join(salt_dir, '*.sls'))
         return len(files)
 
     def salt_highstate(
-            self, namespace, container_name, source_image_name, result_image_name,
+            self,
+            namespace,
+            container_name,
+            source_image_name,
+            result_image_name,
             salt_dir, timeout=SaltExecTimeout):
         """Use SaltStack to configure container"""
         if not self.salt_states_exist(salt_dir):
-            namespace.logger.info("No salt states found, not salting.")
+            namespace.logger.info("No salt states found in '%s'; not salting.", salt_dir)
             return None
+
         namespace.logger.info(
             "Starting salt_highstate: source_image_name=%s, container_name=%s, salt_dir=%s",
             source_image_name, container_name, salt_dir)
         try:
-            container_name = self.docker_create_container(
+            target_container_name = self.docker_create_container(
                 namespace, container_name, source_image_name,
                 volume_map={salt_dir: "/srv/salt"})
 
-            self.docker_start(namespace, container_name)
+            self.docker_start(namespace, target_container_name)
 
             namespace.logger.info("About to start Salting")
             start_time = time.time()
             result, salt_output = self.docker_exec(
-                namespace, container_name,
+                namespace, target_container_name,
                 ["salt-call", "--local", "state.highstate"],
                 timeout)
             duration = round(time.time() - start_time)
@@ -264,14 +263,14 @@ class _DockerBuildLayer(object):
             if self.salt_error(salt_output):
                 raise ExecError("salt_highstate failed.")
 
-            result = self.docker_commit(namespace, container_name, result_image_name)
+            result = self.docker_commit(namespace, target_container_name, result_image_name)
             namespace.logger.info("Committed: %r", result)
         except:
             namespace.logger.exception("Salting failed")
             raise
         finally:
-            self.docker_cleanup(namespace, container_name)
-        return container_name
+            self.docker_cleanup(namespace, target_container_name)
+        return target_container_name
 
     def salt_error(self, salt_output):
         return re.search("\s*Failed:\s+[1-9]\d*\s*$", salt_output, re.MULTILINE) is not None
@@ -577,9 +576,9 @@ class _DockerBuildLayer(object):
                 layer_inst = layer_class_or_inst
             func = layer_inst.build
             subparser = subparsers.add_parser(
-                layer_inst.CommandName,
-                description=layer_inst.Description,
-                help=layer_inst.Help)
+                layer_inst.layer_name,
+                description=layer_inst.description,
+                help=layer_inst.help)
             subparser.set_defaults(
                 layer_inst=layer_inst,
                 func=func)

@@ -31,37 +31,40 @@ def import_class(implementation_filename, base_class):
 
 
 
-def get_layer(layer_base_class, layer_name, layer_data, registry_config):
+def get_layer(layer_base_class, app_name, layer_name, layer_data, registry_config):
     layer_info, layer_path = layer_data["info"], layer_data["path"]
     python_layer_filename = os.path.join(layer_path, "layer.py")
     if os.path.exists(python_layer_filename):
-        layer_class = import_class(python_layer_filename, BuildLayerBase)
+        layer_class = import_class(python_layer_filename, layer_base_class)
     else:
         layer_class = layer_base_class
-    layer = layer_class(
-        layer_base_class.AppName,
-        command_name=layer_name,
-        registry_config=registry_config)
-    layer.__doc__ = "Parsed from {}".format(layer_name)
-    layer.Description = layer_info.get('description')
-    layer.Help = layer_info.get('help')
-    if not layer.Help:
-        raise FlyingCloudError("layer %s is missing a Help string." % layer_name)
-    layer.ExposedPorts = layer_info.get('exposed_ports')
+
     parent = layer_info.get("parent")
-    if parent:
-        layer.SourceImageBaseName = '{}_{}'.format(
-            layer_class.AppName, parent)
-    layer.set_layer_defaults()
+    source_image_base_name = '{}_{}'.format(app_name, parent) if parent else None
+    help = layer_info.get('help')
+    if not help:
+        raise FlyingCloudError("layer %s is missing a Help string." % layer_name)
+    description = layer_info.get('description')
+    exposed_ports = layer_info.get('exposed_ports')
+
+    layer = layer_class(
+        app_name=app_name,
+        layer_name=layer_name,
+        source_image_base_name=source_image_base_name,
+        help=help,
+        description=description,
+        exposed_ports=exposed_ports,
+        registry_config=registry_config,
+    )
+
 #   print(layer.__dict__)
 
     return layer
 
 
 def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
-    BuildLayerBase.project_filename = project_name
     if 'app_name' in project_info:
-        BuildLayerBase.AppName = project_info['app_name']
+        app_name = project_info['app_name']
     else:
         raise FlyingCloudError("Missing 'app_name'")
     registry_config = dict()
@@ -78,7 +81,7 @@ def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
         if value is not None:
             registry_config[rk] = value
 
-    layers = [get_layer(BuildLayerBase, layer_name,
+    layers = [get_layer(BuildLayerBase, app_name, layer_name,
                         layers_info[layer_name], registry_config)
               for layer_name in project_info["layers"]]
 
