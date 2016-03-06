@@ -63,16 +63,18 @@ class _DockerBuildLayer(object):
     # Override these as necessary
     AppName = None
     Organization = None
-    LayerName = None
-    LayerSuffix = None
+
     CommandName = None
-    Description = None
+    SaltStateDir = None
+    LayerSuffix = None
+
     Help = None
+    Description = None
+
+    SourceImageBaseName = None
     SourceImageName = None
     TargetImageName = None  # usually tagged with ":latest"
-    SaltStateDir = None
     ExposedPorts = None
-    SourceImageBaseName = None
 
     Registry = ''
     RegistryDockerVersion = None
@@ -80,10 +82,11 @@ class _DockerBuildLayer(object):
     PullLayer = True
     PushLayer = False
     SquashLayer = False
-    SaltExecTimeout = 45 * 60  # seconds, for long-running commands
-    DefaultTimeout = 5 * 60  # need longer than default timeout for most commands
     USERNAME_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
     PASSWORD_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
+
+    SaltExecTimeout = 45 * 60  # seconds, for long-running commands
+    DefaultTimeout = 5 * 60  # need longer than default timeout for most commands
 
     def main(self, defaults, *layer_classes, **kwargs):
         self.check_root()
