@@ -42,8 +42,8 @@ def get_layer(layer_base_class, layer_name, layer_data):
     layer.__doc__ = "Parsed from {}".format(layer_name)
     layer.Description = layer_info.get('description')
     layer.Help = layer_info.get('help')
-    if not layer.Description:
-        raise FlyingCloudError("layer %s is missing a description." % layer_name)
+    if not layer.Help:
+        raise FlyingCloudError("layer %s is missing a Help string." % layer_name)
     layer.ExposedPorts = layer_info.get('exposed_ports')
     parent = layer_info.get("parent")
     if parent:
@@ -57,7 +57,10 @@ def get_layer(layer_base_class, layer_name, layer_data):
 
 def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
     BuildLayerBase.project_filename = project_name
-    BuildLayerBase.AppName = project_info.get('app_name', BuildLayerBase.AppName)
+    if 'app_name' in project_info:
+        BuildLayerBase.AppName = project_info['app_name']
+    else:
+        raise FlyingCloudError("Missing 'app_name'")
     BuildLayerBase.Organization = project_info.get('organization', BuildLayerBase.Organization)
     BuildLayerBase.Registry = project_info.get('registry', BuildLayerBase.Registry)
     BuildLayerBase.RegistryDockerVersion = project_info.get('registry_docker_version', BuildLayerBase.RegistryDockerVersion)

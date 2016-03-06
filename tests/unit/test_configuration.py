@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from flyingcloud import NewLayer, FlyingCloudError
+from flyingcloud import BuildLayerBase, FlyingCloudError
 from flyingcloud.main import get_project_info, parse_project_yaml
 
 
@@ -58,18 +58,22 @@ exposed_ports:
             'squash_layer': False,
             'push_layer': False,
             'pull_layer': False}
-        layers_info = {'app': {
-            'description': 'Build Flask Example app',
-            'parent': 'opencv',
-            'exposed_ports': [80]
-        }
+        layers_info = {'app':
+           {
+               'info': {
+                   'help': 'Build Flask Example app',
+                   'parent': 'opencv',
+                   'exposed_ports': [80]
+               },
+               'path': '/'
+           }
         }
         layers = parse_project_yaml(project_name=project_name,
                                     project_info=project_info,
                                     layers_info=layers_info)
         assert layers is not None
         assert len(layers) == 1
-        assert type(layers[0]) == NewLayer
+        assert type(layers[0]) == BuildLayerBase
 
     def test_parse_project_yaml_minimal(self):
         project_name = "flaskexample"
@@ -79,7 +83,10 @@ exposed_ports:
         }
         layers_info = { 'app':
             {
-                'description': 'Build Flask Example app',
+                'info': {
+                    'help': 'Build Flask Example app',
+                },
+                'path': '/'
             }
         }
         layers = parse_project_yaml(project_name=project_name,
@@ -87,27 +94,29 @@ exposed_ports:
                                     layers_info=layers_info)
         assert layers is not None
         assert len(layers) == 1
-        assert type(layers[0]) == NewLayer
+        assert type(layers[0]) == BuildLayerBase
 
-    def test_parse_project_yaml_raises_on_missing_layer_description(self):
+    def test_parse_project_yaml_raises_on_missing_layer_help(self):
         project_name = "flaskexample"
         project_info = {
             'layers': ['app'],
             'app_name': 'flaskexample',
         }
-        layers_info = {'app': {}}
-        with pytest.raises(FlyingCloudError):
+        layers_info = {'app': {'info': {}, 'path': '/'}}
+        with pytest.raises(FlyingCloudError) as exc_info:
             parse_project_yaml(project_name=project_name,
                                project_info=project_info,
                                layers_info=layers_info)
+        assert 'missing a Help' in str(exc_info.value)
 
     def test_parse_project_yaml_raises_on_missing_project_appname(self):
         project_name = "flaskexample"
         project_info = {
             'layers': ['app'],
         }
-        layers_info = {'app': {}}
-        with pytest.raises(FlyingCloudError):
+        layers_info = {'app': {'info': {'help': "I'm trapped!"}, 'path': '/'}}
+        with pytest.raises(FlyingCloudError) as exc_info:
             parse_project_yaml(project_name=project_name,
                                project_info=project_info,
                                layers_info=layers_info)
+        assert 'app_name' in str(exc_info.value)
