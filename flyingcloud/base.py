@@ -162,7 +162,7 @@ class _DockerBuildLayer(object):
 
         self.initialize_build(namespace, salt_dir)
 
-        if self.registry_config['PullLayer']:
+        if namespace.push_layer and self.registry_config['PullLayer']:
             self.docker_pull(namespace, self.source_image_name)
 
         dockerfile = self.get_dockerfile(salt_dir)
@@ -544,8 +544,9 @@ class _DockerBuildLayer(object):
         defaults.setdefault('timestamp_format', '%Y-%m-%dt%H%M%Sz')
         defaults.setdefault(
             'timestamp', datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
-        defaults.setdefault('squash_layer', True)
+        defaults.setdefault('pull_layer', True)
         defaults.setdefault('push_layer', True)
+        defaults.setdefault('squash_layer', True)
         defaults.setdefault('retries', 3)
         defaults.setdefault('layer_inst', self)
 
@@ -555,11 +556,14 @@ class _DockerBuildLayer(object):
             '--timeout', '-t', type=int, default=self.DefaultTimeout,
             help="Docker client timeout in seconds. Default: %(default)s")
         parser.add_argument(
-            '--no-squash', '-S', dest='squash_layer', action='store_false',
-            help="Do not squash Docker layers")
+            '--no-pull', '-p', dest='pull_layer', action='store_false',
+            help="Do not pull Docker layers")
         parser.add_argument(
             '--no-push', '-P', dest='push_layer', action='store_false',
             help="Do not push Docker layers")
+        parser.add_argument(
+            '--no-squash', '-S', dest='squash_layer', action='store_false',
+            help="Do not squash Docker layers")
         parser.add_argument(
             '--retries', '-R', dest='retries', type=int,
             help="How often to retry remote Docker operations, such as push/pull. "

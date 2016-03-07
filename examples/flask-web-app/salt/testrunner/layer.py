@@ -19,7 +19,7 @@ class TestRunner(BuildLayerBase):
         else:
             raise ValueError("Unknown test_type: {}".format(test_type))
 
-        if self.registry_config['PullLayer']:
+        if namespace.pull_layer and self.registry_config['PullLayer']:
             self.docker_pull(namespace, self.source_image_name)
 
         environment = {}
