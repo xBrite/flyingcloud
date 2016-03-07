@@ -136,6 +136,12 @@ class DockerBuildLayer(object):
         method = getattr(self, 'do_' + namespace.operation)
         return method(namespace)
 
+    def do_run(self, namespace):
+        pass
+
+    def do_kill(self, namespace):
+        pass
+
     def do_build(self, namespace):
         namespace.logger.info("Build starting...")
         self.log_disk_usage(namespace)
@@ -535,18 +541,17 @@ class DockerBuildLayer(object):
         pass
 
     def parse_args(self, defaults, *layer_classes, **kwargs):
-        # TODO: require registry, organization, etc which have no good defaults
         parser = argparse.ArgumentParser(
             description=kwargs.pop('description', "Build a Docker image using SaltStack"))
 
         defaults = defaults or {}
-        # TODO: review setting up base_dir, etc when the invoking script is in a different directory
         defaults.setdefault('base_dir', os.path.abspath(os.path.dirname(__file__)))
         defaults.setdefault('salt_dir', os.path.join(defaults['base_dir'], "salt"))
         defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "flyingcloud.log"))
         defaults.setdefault('timestamp_format', '%Y-%m-%dt%H%M%Sz')
         defaults.setdefault(
-            'timestamp', datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
+            'timestamp',
+            datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
         defaults.setdefault('pull_layer', True)
         defaults.setdefault('push_layer', True)
         defaults.setdefault('squash_layer', True)
@@ -556,6 +561,17 @@ class DockerBuildLayer(object):
         defaults.setdefault('operation', 'build')
 
         parser.set_defaults(**defaults)
+
+        op_group = parser.add_mutually_exclusive_group()
+        op_group.add_argument(
+            '--build', '-b', dest='operation', action='store_const', const='build',
+            help="Build a layer. (Default)")
+        op_group.add_argument(
+            '--run', '-r', dest='operation', action='store_const', const='run',
+            help="Run a layer.")
+        op_group.add_argument(
+            '--kill', '-k', dest='operation', action='store_const', const='kill',
+            help="Kill a running layer.")
 
         parser.add_argument(
             '--timeout', '-t', type=int, default=self.DefaultTimeout,
