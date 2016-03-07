@@ -62,7 +62,7 @@ def get_layer(layer_base_class, app_name, layer_name, layer_data, registry_confi
     return layer
 
 
-def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
+def parse_project_yaml(project_info, layers_info):
     if 'app_name' in project_info:
         app_name = project_info['app_name']
     else:
@@ -92,7 +92,6 @@ def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
 
 def get_project_info(project_root):
     project_filename = os.path.join(project_root, "flyingcloud.yaml")
-    project_name = os.path.basename(project_root)
     with open(project_filename) as fp:
         project_info = yaml.load(fp)
 
@@ -104,14 +103,13 @@ def get_project_info(project_root):
             info = yaml.load(fp)
             layers_info[layer_name] = dict(info=info, path=layer_path)
 
-    return project_name, project_info, layers_info
+    return project_info, layers_info
 
 
 def configure_layers(project_root):
-    project_name, project_info, layers_info = get_project_info(project_root)
-    return parse_project_yaml(project_name=project_name,
-                              project_info=project_info,
-                              layers_info=layers_info)
+    project_info, layers_info = get_project_info(project_root)
+    layers = parse_project_yaml(project_info, layers_info)
+    return project_info, layers
 
 
 def main():
@@ -124,7 +122,7 @@ def main():
     )
 
     try:
-        layers = configure_layers(project_root)
+        project_info, layers = configure_layers(project_root)
         if not layers:
             raise ValueError("Uh!")
     except:
