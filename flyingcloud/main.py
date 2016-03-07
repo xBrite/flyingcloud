@@ -99,3 +99,7 @@ def main():
 
     instance = namespace.layer_inst
     instance.do_operation(namespace)
+
+
+if __name__ == '__main__':
+    main()

@@ -41,9 +41,7 @@ setup(
     ],
     long_description=open('README.rst').read(),
     keywords="docker saltstack devops automation",
-    entry_points={
-        'console_scripts': [
-            'flyingcloud = flyingcloud.main:main',
-        ]
-    },
-    )
+    scripts=[
+        'flyingcloud/flyingcloud',
+    ],
+)
