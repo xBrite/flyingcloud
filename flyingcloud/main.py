@@ -67,26 +67,13 @@ def parse_project_yaml(project_info, layers_info):
         app_name = project_info['app_name']
     else:
         raise FlyingCloudError("Missing 'app_name'")
+    if not project_info.get("layers"):
+        raise FlyingCloudError("Missing 'layers'")
 
-    registry_config = dict()
-    if 'registry' in project_info:
-        for rk, yk in [
-                ('Host', 'host'),
-                ('Organization', 'organization'),
-                ('RegistryDockerVersion', 'registry_docker_version'),
-                ('LoginRequired', 'login_required'),
-                ('PullLayer', 'pull_layer'),
-                ('PushLayer', 'push_layer'),
-                ('SquashLayer', 'squash_layer'),
-            ]:
-            value = project_info['registry'].get(yk, None)
-            if value is not None:
-                registry_config[rk] = value
-
+    registry_config = project_info.get('registry', {})
     layers = [get_layer(DockerBuildLayer, app_name, layer_name,
                         layers_info[layer_name], registry_config)
               for layer_name in project_info["layers"]]
-
     return layers
 
 
@@ -94,6 +81,7 @@ def get_project_info(project_root):
     project_filename = os.path.join(project_root, "flyingcloud.yaml")
     with open(project_filename) as fp:
         project_info = yaml.load(fp)
+        project_info.setdefault('description', "Build Docker images using SaltStack")
 
     layers_info = {}
     for layer_name in project_info['layers']:
@@ -115,10 +103,9 @@ def configure_layers(project_root):
 def main():
     DockerBuildLayer.check_root()
 
-    project_root = os.getcwd()
-    base_dir = os.path.abspath(project_root)
+    project_root = os.path.abspath(os.getcwd())
     defaults = dict(
-        base_dir=base_dir,
+        base_dir=project_root,
     )
 
     try:
@@ -134,7 +121,7 @@ def main():
     namespace = instance.parse_args(
         defaults,
         *layers,
-        description="Build Docker images using SaltStack")
+        description=project_info['description'])
 
     instance = namespace.layer_inst
     instance.run_build(namespace)

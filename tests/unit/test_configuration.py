@@ -32,12 +32,14 @@ help: Build Flask Example app
 parent: opencv
 exposed_ports:
   - 80
+  - 443
         """
         layer_file.write(layer_file_content)
         project_info, layers = configure_layers(str(tmpdir.realpath()))
         assert project_info is not None
         assert layers
         assert len(layers) == 1
+        assert layers[0].exposed_ports == [80, 443]
 
     def test_parse_project_yaml(self):
         project_info = {
@@ -67,7 +69,7 @@ exposed_ports:
         assert layers is not None
         assert len(layers) == 1
         assert type(layers[0]) == DockerBuildLayer
-        assert layers[0].registry_config['Host'] == 'quay.io'
+        assert layers[0].registry_config['host'] == 'quay.io'
         assert layers[0].exposed_ports == [80]
 
     def test_parse_project_yaml_minimal(self):
@@ -106,3 +108,22 @@ exposed_ports:
         with pytest.raises(FlyingCloudError) as exc_info:
             parse_project_yaml(project_info, layers_info)
         assert 'app_name' in str(exc_info.value)
+
+    def test_parse_project_yaml_raises_on_missing_project_layers(self):
+        project_info = {
+            'app_name': 'someapp'
+        }
+        layers_info = {}
+        with pytest.raises(FlyingCloudError) as exc_info:
+            parse_project_yaml(project_info, layers_info)
+        assert 'layers' in str(exc_info.value)
+
+    def test_parse_project_yaml_raises_on_empty_project_layers(self):
+        project_info = {
+            'app_name': 'someapp',
+            'layers': [],
+        }
+        layers_info = {}
+        with pytest.raises(FlyingCloudError) as exc_info:
+            parse_project_yaml(project_info, layers_info)
+        assert 'layers' in str(exc_info.value)

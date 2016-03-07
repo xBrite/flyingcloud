@@ -68,13 +68,13 @@ class DockerBuildLayer(object):
     PASSWORD_ENV_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
 
     RegistryConfig = dict(
-        Host=None,
-        Organization=None,
-        RegistryDockerVersion=None,
-        LoginRequired=True,
-        PullLayer=True,
-        PushLayer=False,
-        SquashLayer=False,
+        host=None,
+        organization=None,
+        docker_api_version=None,
+        login_required=True,
+        pull_layer=True,
+        push_layer=False,
+        squash_layer=False,
     )
 
     def __init__(
@@ -94,7 +94,10 @@ class DockerBuildLayer(object):
         self.help = help
         self.description = description
         self.exposed_ports = exposed_ports
-        self.registry_config = registry_config or self.RegistryConfig
+        config = self.RegistryConfig.copy()
+        if registry_config:
+            config.update(registry_config)
+        self.registry_config = config
 
         self.container_name = "{}_{}".format(self.app_name, self.layer_name)
         if source_image_base_name:
@@ -102,11 +105,11 @@ class DockerBuildLayer(object):
                 self.source_image_base_name, source_version_tag)
         else:
             self.source_image_name = None
-        if self.registry_config['Host'] and self.registry_config['Organization']:
+        if self.registry_config['host'] and self.registry_config['organization']:
             if self.source_image_name:
                 self.source_image_name = "{}/{}/{}".format(
-                    self.registry_config['Host'],
-                    self.registry_config['Organization'],
+                    self.registry_config['host'],
+                    self.registry_config['organization'],
                     self.source_image_name)
 
         # These require the command-line args to properly initialize
@@ -124,7 +127,7 @@ class DockerBuildLayer(object):
             raise NotSudoError("You must be root (use sudo)")
 
     def check_environment_variables(self):
-        if self.registry_config['Host'] and self.registry_config['LoginRequired']:
+        if self.registry_config['host'] and self.registry_config['login_required']:
             for v in [self.USERNAME_ENV_VAR, self.PASSWORD_ENV_VAR]:
                 if v not in os.environ:
                     raise EnvironmentVarError("Environment variable {} not defined".format(v))
@@ -162,7 +165,7 @@ class DockerBuildLayer(object):
 
         self.initialize_build(namespace, salt_dir)
 
-        if namespace.push_layer and self.registry_config['PullLayer']:
+        if namespace.push_layer and self.registry_config['pull_layer']:
             self.docker_pull(namespace, self.source_image_name)
 
         dockerfile = self.get_dockerfile(salt_dir)
@@ -180,7 +183,7 @@ class DockerBuildLayer(object):
             salt_dir=salt_dir)
 
         layer_strong_name = None
-        if namespace.squash_layer and self.registry_config['SquashLayer']:
+        if namespace.squash_layer and self.registry_config['squash_layer']:
             layer_strong_name = self.docker_squash(
                 namespace,
                 image_name=self.layer_timestamp_name,
@@ -197,7 +200,7 @@ class DockerBuildLayer(object):
         # TODO: make the following lines work consistently; on some Linux boxes, they don't work
         # if remove_layer:
         #     self.docker_remove_image(namespace, remove_layer)
-        if namespace.push_layer and self.registry_config['PushLayer']:
+        if namespace.push_layer and self.registry_config['push_layer']:
             self.docker_push(
                 namespace,
                 layer_strong_name)
@@ -504,7 +507,7 @@ class DockerBuildLayer(object):
                     username=username,
                     password=password,
                     registry=registry)
-            elif self.registry_config['LoginRequired']:
+            elif self.registry_config['login_required']:
                 assert username, "No username"
                 assert password, "No password"
 
@@ -599,7 +602,7 @@ class DockerBuildLayer(object):
             namespace,
             namespace.username,
             namespace.password,
-            registry=self.registry_config['Host'])
+            registry=self.registry_config['host'])
 
         self.add_additional_configuration(namespace)
 
@@ -612,8 +615,8 @@ class DockerBuildLayer(object):
     def docker_client(self, namespace, *args, **kwargs):
         namespace.logger.info("Platform is '%s'.", platform.system())
         kwargs.setdefault('timeout', self.DefaultTimeout)
-        if self.registry_config['RegistryDockerVersion']:
-            kwargs.setdefault('version', self.registry_config['RegistryDockerVersion'])
+        if self.registry_config['docker_api_version']:
+            kwargs.setdefault('version', self.registry_config['docker_api_version'])
         if platform.system() == "Darwin":
             # TODO: Windows
             kwargs = self.get_docker_machine_client(namespace, **kwargs)

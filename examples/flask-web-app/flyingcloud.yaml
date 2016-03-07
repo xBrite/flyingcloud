@@ -1,4 +1,5 @@
 app_name: 'flaskexample'
+description: 'Sample Flask App for FlyingCloud'
 layers:
   - testrunner
   - app
@@ -9,8 +10,8 @@ layers:
 registry:
   host: quay.io
   organization: cookbrite
-  registry_docker_version: "1.17"
+  docker_api_version: "1.17"
   login_required: false
   pull_layer: false
-  squash_layer: false
   push_layer: false
+  squash_layer: false
