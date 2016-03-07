@@ -14,6 +14,8 @@ import logging
 import io
 import os
 import platform
+
+import psutil as psutil
 import requests
 
 import re
@@ -332,12 +334,24 @@ class DockerBuildLayer(object):
     def port_forwarding(self, namespace):
         if self.use_docker_machine(namespace):
             for host_port in self.host_ports(self.exposed_ports):
-                args = ("-f", "-N", "-L", "{0}:localhost:{0}".format(host_port))
-                # TODO: $(ps aux | grep "[s]ssh.*" + args)
-                args = ("ssh", namespace.docker_machine_name) + args
-                namespace.logger.info("port_forwarding: %r", args)
-                result = self.docker_machine(*args, _bg=True)
-                namespace.logger.info("port_forwarded: %r", result)
+                ssh_args = ["-f", "-N", "-L", "{0}:localhost:{0}".format(host_port)]
+                pid = self.find_port_forwarding(namespace, ssh_args)
+                if pid:
+                    namespace.logger.info("Already forwarding %d: PID=%s", host_port, pid)
+                else:
+                    args = ["ssh", namespace.docker_machine_name] + ssh_args
+                    namespace.logger.info("port_forwarding: %r", args)
+                    result = self.docker_machine(*args, _bg=True)
+                    namespace.logger.info("port_forwarded: %r", result)
+
+    def find_port_forwarding(self, namespace, args):
+        for p in psutil.process_iter():
+            try:
+                if p.name().endswith('ssh'):
+                    if p.cmdline()[-len(args):] == args:
+                        return p.pid
+            except psutil.NoSuchProcess:
+                pass
 
     def build_dockerfile(self, namespace, tag, dockerfile=None, fileobj=None):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
