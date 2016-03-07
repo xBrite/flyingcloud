@@ -280,7 +280,7 @@ class DockerBuildLayer(object):
 
     def make_expose_ports(self, namespace):
         if self.exposed_ports:
-            port_list = " ".join(str(p) for p in self.exposed_ports)
+            port_list = " ".join(str(p) for p in self.docker_ports(self.exposed_ports))
             Dockerfile = """\
                 FROM {}
                 EXPOSE {}
@@ -289,6 +289,30 @@ class DockerBuildLayer(object):
             with io.BytesIO(Dockerfile.encode('utf-8')) as fileobj:
                 return self.build_dockerfile(
                     namespace, tag=self.layer_timestamp_name, fileobj=fileobj)
+
+    @classmethod
+    def docker_ports(cls, exposed_ports):
+        ports = []
+        for p in exposed_ports:
+            if isinstance(p, dict):
+                assert len(p) == 1
+                port = p.keys()[0]
+            else:
+                port = p
+            ports.append(int(port))
+        return ports
+
+    @classmethod
+    def host_ports(cls, exposed_ports):
+        ports = []
+        for p in exposed_ports:
+            if isinstance(p, dict):
+                assert len(p) == 1
+                port = p.values()[0]
+            else:
+                port = p
+            ports.append(int(port))
+        return ports
 
     def build_dockerfile(self, namespace, tag, dockerfile=None, fileobj=None):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
@@ -306,17 +330,20 @@ class DockerBuildLayer(object):
 
     def docker_create_container(
             self, namespace, container_name, image_name,
-            environment=None, detach=True, volume_map=None):
-        namespace.logger.info("Creating container '%s' from image %s", container_name, image_name)
+            environment=None, detach=True, ports=None, volume_map=None, **kwargs):
+        namespace.logger.info("Creating container '%s' from image %s",
+                              container_name, image_name)
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, self.docker_tags_for_image(namespace, image_name))
+        kwargs.update(self.docker_volumes(namespace, volume_map))
         container = namespace.docker.create_container(
             image=image_name,
             name=container_name,
             environment=environment,
             detach=detach,
-            **self.docker_volumes(namespace, volume_map))
+            ports=ports,
+            **kwargs)
         container_id = container['Id']
         namespace.logger.info("Created container %s, result=%r", container_id[:12], container)
         return container_id

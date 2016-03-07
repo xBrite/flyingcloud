@@ -4,7 +4,7 @@ import os
 import pytest
 
 from flyingcloud import DockerBuildLayer, FlyingCloudError
-from flyingcloud.main import get_project_info, parse_project_yaml, configure_layers
+from flyingcloud.main import parse_project_yaml, configure_layers
 
 
 class TestConfiguration:
