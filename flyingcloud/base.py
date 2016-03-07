@@ -667,11 +667,20 @@ class DockerBuildLayer(object):
         kwargs.setdefault('timeout', self.DefaultTimeout)
         if self.registry_config['docker_api_version']:
             kwargs.setdefault('version', self.registry_config['docker_api_version'])
-        if platform.system() == "Darwin":
-            # TODO: Windows
+        if self.use_docker_machine(namespace):
             kwargs = self.get_docker_machine_client(namespace, **kwargs)
         namespace.logger.debug("Constructing docker client object with %s", kwargs)
         return docker.Client(*args, **kwargs)
+
+    def use_docker_machine(self, namespace):
+        # TODO: Windows
+        return platform.system() == "Darwin"
+
+    def docker_machine(self, *args):
+        with io.BytesIO() as output:
+            docker_machine = sh.Command("docker-machine")
+            docker_machine(*args, _out=output)
+            return output.getvalue()
 
     def get_docker_machine_client(self, namespace, **kwargs):
         # TODO: better error handling
@@ -692,8 +701,3 @@ class DockerBuildLayer(object):
         namespace.logger.info("Docker-Machine: using %r", kwargs)
         return kwargs
 
-    def docker_machine(self, *args):
-        with io.BytesIO() as output:
-            docker_machine = sh.Command("docker-machine")
-            docker_machine(*args, _out=output)
-            return output.getvalue()
