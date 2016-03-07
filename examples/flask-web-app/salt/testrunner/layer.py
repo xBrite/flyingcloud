@@ -11,7 +11,7 @@ class TestRunner(DockerBuildLayer):
     def build(self, namespace):
         raise NotImplementedError('TestRunner is not built')
 
-    def run(self, namespace):
+    def do_run(self, namespace):
         test_type = namespace.test_type
         test_path = "/venv/lib/python2.7/site-packages/flask_example_app/tests"
 
@@ -46,7 +46,7 @@ class TestRunner(DockerBuildLayer):
             raise CommandError("testrunner {}: exit code was non-zero: {}".format(
                 test_dir, exit_code))
 
-    def kill(self, namespace):
+    def do_kill(self, namespace):
         pass
 
     @classmethod

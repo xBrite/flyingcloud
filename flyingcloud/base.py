@@ -15,7 +15,7 @@ import io
 import os
 import platform
 
-import psutil as psutil
+import psutil
 import requests
 
 import re
@@ -147,7 +147,11 @@ class DockerBuildLayer(object):
         self.docker_start(namespace, target_container_name)
 
     def do_kill(self, namespace):
-        raise NotImplementedError("'kill' not implemented")
+        try:
+            self.docker_cleanup(namespace, self.container_name)
+        except (docker.errors.DockerException, docker.errors.APIError):
+            pass
+        self.kill_port_forwarding(namespace)
 
     def do_build(self, namespace):
         namespace.logger.info("Build starting...")
@@ -334,22 +338,37 @@ class DockerBuildLayer(object):
     def port_forwarding(self, namespace):
         if self.use_docker_machine(namespace):
             for host_port in self.host_ports(self.exposed_ports):
-                ssh_args = ["-f", "-N", "-L", "{0}:localhost:{0}".format(host_port)]
-                pid = self.find_port_forwarding(namespace, ssh_args)
-                if pid:
-                    namespace.logger.info("Already forwarding %d: PID=%s", host_port, pid)
+                ssh_args = self.ssh_port_forward_args(host_port)
+                process = self.find_port_forwarding(namespace, ssh_args)
+                if process:
+                    namespace.logger.info("Already forwarding %d: PID=%d",
+                                          host_port, process.pid)
                 else:
                     args = ["ssh", namespace.docker_machine_name] + ssh_args
                     namespace.logger.info("port_forwarding: %r", args)
                     result = self.docker_machine(*args, _bg=True)
                     namespace.logger.info("port_forwarded: %r", result)
 
+    def kill_port_forwarding(self, namespace):
+        if self.use_docker_machine(namespace):
+            for host_port in self.host_ports(self.exposed_ports):
+                ssh_args = self.ssh_port_forward_args(host_port)
+                process = self.find_port_forwarding(namespace, ssh_args)
+                if process:
+                    namespace.logger.info("Killing port forwarding for %d: PID=%d",
+                                          host_port, process.pid)
+                    process.kill()
+                    namespace.logger.info("Killed port forwarding")
+
+    def ssh_port_forward_args(self, host_port):
+        return ["-f", "-N", "-L", "{0}:localhost:{0}".format(host_port)]
+
     def find_port_forwarding(self, namespace, args):
-        for p in psutil.process_iter():
+        for process in psutil.process_iter():
             try:
-                if p.name().endswith('ssh'):
-                    if p.cmdline()[-len(args):] == args:
-                        return p.pid
+                if process.name().endswith('ssh'):
+                    if process.cmdline()[-len(args):] == args:
+                        return process
             except psutil.NoSuchProcess:
                 pass
 
@@ -535,6 +554,9 @@ class DockerBuildLayer(object):
 
     def docker_stop(self, namespace, container_name):
         namespace.docker.stop(container_name)
+
+    def docker_kill(self, namespace, container_name, signal=None):
+        return namespace.docker.kill(container_name, signal=signal)
 
     def docker_remove_container(self, namespace, container_name, force=True):
         namespace.docker.remove_container(container=container_name, force=force)
