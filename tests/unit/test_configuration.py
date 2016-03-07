@@ -48,16 +48,17 @@ exposed_ports:
         project_name = "flaskexample"
         project_info = {
             'layers': ['app'],
-            'username_varname': 'EXAMPLE_DOCKER_REGISTRY_USERNAME',
-            'password_varname': 'EXAMPLE_DOCKER_REGISTRY_PASSWORD',
-            'registry': 'quay.io',
-            'organization': 'cookbrite',
-            'registry_docker_version': "1.17",
             'app_name': 'flaskexample',
-            'login_required': False,
-            'squash_layer': False,
-            'push_layer': False,
-            'pull_layer': False}
+            'registry' : {
+                'host': 'quay.io',
+                'organization': 'cookbrite',
+                'registry_docker_version': "1.17",
+                'login_required': False,
+                'squash_layer': False,
+                'push_layer': False,
+                'pull_layer': False
+            }
+        }
         layers_info = {'app':
            {
                'info': {
@@ -74,6 +75,8 @@ exposed_ports:
         assert layers is not None
         assert len(layers) == 1
         assert type(layers[0]) == BuildLayerBase
+        assert layers[0].registry_config['Host'] == 'quay.io'
+        assert layers[0].exposed_ports == [80]
 
     def test_parse_project_yaml_minimal(self):
         project_name = "flaskexample"

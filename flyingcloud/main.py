@@ -67,19 +67,21 @@ def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
         app_name = project_info['app_name']
     else:
         raise FlyingCloudError("Missing 'app_name'")
+
     registry_config = dict()
-    for rk, yk in [
-            ('Host', 'registry'),
-            ('Organization', 'organization'),
-            ('RegistryDockerVersion', 'registry_docker_version'),
-            ('LoginRequired', 'login_required'),
-            ('PullLayer', 'pull_layer'),
-            ('PushLayer', 'push_layer'),
-            ('SquashLayer', 'squash_layer'),
-        ]:
-        value = project_info.get(yk, None)
-        if value is not None:
-            registry_config[rk] = value
+    if 'registry' in project_info:
+        for rk, yk in [
+                ('Host', 'host'),
+                ('Organization', 'organization'),
+                ('RegistryDockerVersion', 'registry_docker_version'),
+                ('LoginRequired', 'login_required'),
+                ('PullLayer', 'pull_layer'),
+                ('PushLayer', 'push_layer'),
+                ('SquashLayer', 'squash_layer'),
+            ]:
+            value = project_info['registry'].get(yk, None)
+            if value is not None:
+                registry_config[rk] = value
 
     layers = [get_layer(BuildLayerBase, app_name, layer_name,
                         layers_info[layer_name], registry_config)
