@@ -116,13 +116,13 @@ class DockerBuildLayer(object):
         self.layer_latest_name = self.layer_timestamp_name = self.layer_squashed_name = None
 
     def main(self, defaults, *layer_classes, **kwargs):
-        self.check_root()
+        self.check_user_is_root()
         self.check_environment_variables()
         namespace = self.parse_args(defaults, *layer_classes, **kwargs)
-        self.run_build(namespace)
+        self.do_operation(namespace)
 
     @classmethod
-    def check_root(cls):
+    def check_user_is_root(cls):
         if platform.system() == "Linux" and os.geteuid() != 0 :
             raise NotSudoError("You must be root (use sudo)")
 
@@ -132,12 +132,17 @@ class DockerBuildLayer(object):
                 if v not in os.environ:
                     raise EnvironmentVarError("Environment variable {} not defined".format(v))
 
-    def run_build(self, namespace):
+    def do_operation(self, namespace):
+        method = getattr(self, 'do_' + namespace.operation)
+        return method(namespace)
+
+    def do_build(self, namespace):
         namespace.logger.info("Build starting...")
         self.log_disk_usage(namespace)
         self.docker_info(namespace)
-        if namespace.layer_inst.should_build(namespace):
-            namespace.func(namespace)
+        layer_inst = namespace.layer_inst
+        if layer_inst.should_build(namespace):
+            layer_inst.build(namespace)
         namespace.logger.info("Build finished")
 
     def should_build(self, namespace):
@@ -174,7 +179,7 @@ class DockerBuildLayer(object):
             self.source_image_name = self.build_dockerfile(
                 namespace, tag=self.layer_timestamp_name, dockerfile=dockerfile)
         else:
-            self.do_expose_ports(namespace)
+            self.make_expose_ports(namespace)
 
         target_container_name = self.salt_highstate(
             namespace, self.container_name,
@@ -266,7 +271,7 @@ class DockerBuildLayer(object):
         df = os.path.join(salt_dir, "Dockerfile")
         return df if os.path.exists(df) else None
 
-    def do_expose_ports(self, namespace):
+    def make_expose_ports(self, namespace):
         if self.exposed_ports:
             port_list = " ".join(str(p) for p in self.exposed_ports)
             Dockerfile = """\
@@ -552,6 +557,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('retries', 3)
         defaults.setdefault('layer_inst', self)
+        defaults.setdefault('operation', 'build')
 
         parser.set_defaults(**defaults)
 
@@ -581,14 +587,13 @@ class DockerBuildLayer(object):
                 layer_inst = layer_class_or_inst()
             else:
                 layer_inst = layer_class_or_inst
-            func = layer_inst.build
             subparser = subparsers.add_parser(
                 layer_inst.layer_name,
                 description=layer_inst.description,
                 help=layer_inst.help)
             subparser.set_defaults(
                 layer_inst=layer_inst,
-                func=func)
+            )
             layer_inst.add_parser_options(subparser)
 
         namespace = parser.parse_args()

@@ -77,7 +77,7 @@ def configure_layers(project_root):
 
 
 def main():
-    DockerBuildLayer.check_root()
+    DockerBuildLayer.check_user_is_root()
 
     project_root = os.path.abspath(os.getcwd())
     defaults = dict(
@@ -98,4 +98,4 @@ def main():
         description=project_info['description'])
 
     instance = namespace.layer_inst
-    instance.run_build(namespace)
+    instance.do_operation(namespace)
