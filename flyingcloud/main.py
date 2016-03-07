@@ -9,13 +9,13 @@ from .base import DockerBuildLayer, FlyingCloudError
 from .utils import import_derived_class
 
 
-def get_layer(layer_base_class, app_name, layer_name, layer_data, registry_config):
+def get_layer(app_name, layer_name, layer_data, registry_config):
     layer_info, layer_path = layer_data["info"], layer_data["path"]
     python_layer_filename = os.path.join(layer_path, "layer.py")
     if os.path.exists(python_layer_filename):
-        layer_class = import_derived_class(python_layer_filename, layer_base_class)
+        layer_class = import_derived_class(python_layer_filename, DockerBuildLayer)
     else:
-        layer_class = layer_base_class
+        layer_class = DockerBuildLayer
 
     parent = layer_info.get("parent")
     source_image_base_name = '{}_{}'.format(app_name, parent) if parent else None
@@ -47,19 +47,17 @@ def parse_project_yaml(project_info, layers_info):
         raise FlyingCloudError("Missing 'app_name'")
     if not project_info.get("layers"):
         raise FlyingCloudError("Missing 'layers'")
+    project_info.setdefault('description', "Build Docker images using SaltStack")
 
-    registry_config = project_info.get('registry', {})
-    layers = [get_layer(DockerBuildLayer, app_name, layer_name,
-                        layers_info[layer_name], registry_config)
+    registry_config = project_info.get('registry')
+    layers = [get_layer(app_name, layer_name, layers_info[layer_name], registry_config)
               for layer_name in project_info["layers"]]
     return layers
 
 
 def get_project_info(project_root):
-    project_filename = os.path.join(project_root, "flyingcloud.yaml")
-    with open(project_filename) as fp:
+    with open(os.path.join(project_root, "flyingcloud.yaml")) as fp:
         project_info = yaml.load(fp)
-        project_info.setdefault('description', "Build Docker images using SaltStack")
 
     layers_info = {}
     for layer_name in project_info['layers']:
@@ -88,9 +86,7 @@ def main():
 
     try:
         project_info, layers = configure_layers(project_root)
-        if not layers:
-            raise ValueError("Uh!")
-    except:
+    except FlyingCloudError:
         # TODO: argparse help
         raise
 
