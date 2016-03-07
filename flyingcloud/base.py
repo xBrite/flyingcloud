@@ -152,10 +152,6 @@ class DockerBuildLayer(object):
         """Override if you need special handling"""
         pass
 
-    def run_command(self, namespace, layer_strong_name, container_id):
-        """Override if you need special handling"""
-        pass
-
     def build(self, namespace):
         salt_dir = os.path.abspath(os.path.join(namespace.salt_dir, self.layer_name))
 
@@ -200,7 +196,6 @@ class DockerBuildLayer(object):
             namespace.logger.info("Not squashing layer %s", layer_strong_name)
             remove_layer = None
             self.docker_tag(namespace, layer_strong_name, "latest")
-        self.run_command(namespace, layer_strong_name, target_container_name)
 
         # TODO: make the following lines work consistently; on some Linux boxes, they don't work
         # if remove_layer:
@@ -216,10 +211,6 @@ class DockerBuildLayer(object):
             namespace.logger.info("Not pushing Docker layers.")
 
         return layer_strong_name
-
-    def salt_states_exist(self, salt_dir):
-        files = glob.glob(os.path.join(salt_dir, '*.sls'))
-        return len(files)
 
     def salt_highstate(
             self,
@@ -263,6 +254,10 @@ class DockerBuildLayer(object):
         finally:
             self.docker_cleanup(namespace, target_container_name)
         return target_container_name
+
+    def salt_states_exist(self, salt_dir):
+        files = glob.glob(os.path.join(salt_dir, '*.sls'))
+        return len(files)
 
     def salt_error(self, salt_output):
         return re.search("\s*Failed:\s+[1-9]\d*\s*$", salt_output, re.MULTILINE) is not None
