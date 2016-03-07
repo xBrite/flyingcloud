@@ -355,10 +355,9 @@ class DockerBuildLayer(object):
                 ssh_args = self.ssh_port_forward_args(host_port)
                 process = self.find_port_forwarding(namespace, ssh_args)
                 if process:
-                    namespace.logger.info("Killing port forwarding for %d: PID=%d",
-                                          host_port, process.pid)
+                    namespace.logger.info(
+                        "Killing port forwarding for %d: PID=%d", host_port, process.pid)
                     process.kill()
-                    namespace.logger.info("Killed port forwarding")
 
     def ssh_port_forward_args(self, host_port):
         return ["-f", "-N", "-L", "{0}:localhost:{0}".format(host_port)]
