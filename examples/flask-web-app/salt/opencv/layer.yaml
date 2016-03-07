@@ -1,0 +1,3 @@
+description: OpenCV base layer (installs into virtualenv  at /venv)
+parent: pybase
+

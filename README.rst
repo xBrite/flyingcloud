@@ -7,7 +7,7 @@ Build Docker images using SaltStack
 ===================================
 
 This is a Python library and set of tools that lets you build `Docker <http://docker.com>`_ images using 
-`SaltStack <http://saltstack.com/>`_ instead of (or in addition to) using Dockerfiles.
+masterless `SaltStack <http://saltstack.com/>`_ instead of (or in addition to) using Dockerfiles.
 
 FlyingCloud is easy to run from the commandline, and built to be run on
 a Continuous Integration server.
