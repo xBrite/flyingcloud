@@ -9,6 +9,9 @@ from flyingcloud import DockerBuildLayer, CommandError
 
 class TestRunner(DockerBuildLayer):
     def build(self, namespace):
+        raise NotImplementedError('TestRunner is not built')
+
+    def run(self, namespace):
         test_type = namespace.test_type
         test_path = "/venv/lib/python2.7/site-packages/flask_example_app/tests"
 
@@ -42,6 +45,9 @@ class TestRunner(DockerBuildLayer):
         if exit_code != 0:
             raise CommandError("testrunner {}: exit code was non-zero: {}".format(
                 test_dir, exit_code))
+
+    def kill(self, namespace):
+        pass
 
     @classmethod
     def add_parser_options(cls, subparser):

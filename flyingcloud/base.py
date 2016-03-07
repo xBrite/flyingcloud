@@ -137,10 +137,16 @@ class DockerBuildLayer(object):
         return method(namespace)
 
     def do_run(self, namespace):
-        pass
+        return self.run(namespace)
+
+    def run(self, namespace):
+        raise NotImplementedError("'run' not implemented")
 
     def do_kill(self, namespace):
-        pass
+        return self.kill(namespace)
+
+    def kill(self, namespace):
+        raise NotImplementedError("'kill' not implemented")
 
     def do_build(self, namespace):
         namespace.logger.info("Build starting...")
