@@ -4,10 +4,10 @@ from setuptools import setup, find_packages
 
 setup(
     name='flyingcloud',
-    version='0.2.1',
+    version='0.3.0',
     description='Build Docker images using SaltStack',
-    author='CookBrite, Inc.',
-    author_email='flyingcloud-admin@cookbrite.com',
+    author='MetaBrite, Inc.',
+    author_email='flyingcloud-admin@metabrite.com',
     license='Apache Software License 2.0',
     url='https://github.com/cookbrite/flyingcloud',
     packages=find_packages(exclude='tests'),
