@@ -47,7 +47,7 @@ You must build the layers in order - there is no make-style dependency system.
 
 * To see what the build is doing, `tail -f build_docker.log` (perhaps in another window)
 * To run the image locally:
-  * `sudo docker run -d -P -p 8080:80 flaskexample_app:latest`
+  * `sudo docker run -d -P -p 127.0.0.1:8080:80 flaskexample_app:latest`
 * To enter the docker container:
   * Get the container id:
   * `sudo docker ps` and find the container_id for the flaskexample_app.
