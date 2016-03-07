@@ -556,6 +556,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('push_layer', True)
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('retries', 3)
+        defaults.setdefault('docker_machine_name', 'default')
         defaults.setdefault('layer_inst', self)
         defaults.setdefault('operation', 'build')
 
@@ -630,10 +631,7 @@ class DockerBuildLayer(object):
 
     def get_docker_machine_client(self, namespace, **kwargs):
         # TODO: better error handling
-        with io.BytesIO() as output:
-            docker_machine = sh.Command("docker-machine")
-            docker_machine("inspect", "default", _out=output)
-            docker_machine_json = output.getvalue()
+        docker_machine_json = self.docker_machine("inspect", namespace.docker_machine_name)
         namespace.logger.debug("docker-machine json: %r", docker_machine_json)
         namespace.logger.debug("docker-machine json type: %r", type(docker_machine_json))
         docker_machine_json = json.loads(docker_machine_json)
@@ -649,3 +647,9 @@ class DockerBuildLayer(object):
             verify=True)
         namespace.logger.info("Docker-Machine: using %r", kwargs)
         return kwargs
+
+    def docker_machine(self, *args):
+        with io.BytesIO() as output:
+            docker_machine = sh.Command("docker-machine")
+            docker_machine(*args, _out=output)
+            return output.getvalue()
