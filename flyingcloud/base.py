@@ -352,14 +352,14 @@ class DockerBuildLayer(object):
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, self.docker_tags_for_image(namespace, image_name))
+        kwargs['image'] = image_name
+        kwargs['name'] = container_name
+        kwargs['environment'] = environment
+        kwargs['detach'] = detach
+        kwargs['ports'] = ports
         kwargs.update(self.docker_host_config(namespace, volume_map, ports))
-        container = namespace.docker.create_container(
-            image=image_name,
-            name=container_name,
-            environment=environment,
-            detach=detach,
-            ports=ports,
-            **kwargs)
+        namespace.logger.info("create_container: %r", kwargs)
+        container = namespace.docker.create_container(**kwargs)
         container_id = container['Id']
         namespace.logger.info("Created container %s, result=%r", container_id[:12], container)
         return container_id
