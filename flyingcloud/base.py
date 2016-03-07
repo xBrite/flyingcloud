@@ -209,22 +209,6 @@ class _DockerBuildLayer(object):
 
         return layer_strong_name
 
-    def get_dockerfile(self, salt_dir):
-        df = os.path.join(salt_dir, "Dockerfile")
-        return df if os.path.exists(df) else None
-
-    def do_expose_ports(self, namespace):
-        if self.exposed_ports:
-            port_list = " ".join(str(p) for p in self.exposed_ports)
-            Dockerfile = """
-                FROM {}
-                EXPOSE {}
-            """.format(self.source_image_name, port_list)
-            namespace.logger.info("Exposing ports: %s", port_list)
-            with io.BytesIO(Dockerfile.encode('utf-8')) as fileobj:
-                return self.build_dockerfile(
-                    namespace, tag=self.layer_timestamp_name, fileobj=fileobj)
-
     def salt_states_exist(self, salt_dir):
         files = glob.glob(os.path.join(salt_dir, '*.sls'))
         return len(files)
@@ -274,6 +258,22 @@ class _DockerBuildLayer(object):
 
     def salt_error(self, salt_output):
         return re.search("\s*Failed:\s+[1-9]\d*\s*$", salt_output, re.MULTILINE) is not None
+
+    def get_dockerfile(self, salt_dir):
+        df = os.path.join(salt_dir, "Dockerfile")
+        return df if os.path.exists(df) else None
+
+    def do_expose_ports(self, namespace):
+        if self.exposed_ports:
+            port_list = " ".join(str(p) for p in self.exposed_ports)
+            Dockerfile = """\
+                FROM {}
+                EXPOSE {}
+            """.format(self.source_image_name, port_list)
+            namespace.logger.info("Exposing ports: %s", port_list)
+            with io.BytesIO(Dockerfile.encode('utf-8')) as fileobj:
+                return self.build_dockerfile(
+                    namespace, tag=self.layer_timestamp_name, fileobj=fileobj)
 
     def build_dockerfile(self, namespace, tag, dockerfile=None, fileobj=None):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
