@@ -8,8 +8,8 @@ from flyingcloud import DockerBuildLayer, CommandError
 
 
 class TestRunner(DockerBuildLayer):
-    def build(self, namespace):
-        raise NotImplementedError('TestRunner is not built')
+    def do_build(self, namespace):
+        namespace.logger.warning("TestRunner build does nothing")
 
     def do_run(self, namespace):
         test_type = namespace.test_type
