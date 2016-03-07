@@ -15,4 +15,14 @@
 * Run tests with `flyingcloud.sh testrunner`
     * `unit` (default)
     * use `-T acceptance`
+<<<<<<< HEAD
+    * use `-T acceptance -B http://www.google.com` - to demonstrate test failure
+
+
+
+* Kill the example JSON API
+* try using a different docker machine for puppy demo
+* Remove extraneous foundation files
+=======
     * use `-T acceptance -B http://www.google.com`
+>>>>>>> master
