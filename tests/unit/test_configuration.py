@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from flyingcloud import BuildLayerBase, FlyingCloudError
+from flyingcloud import DockerBuildLayer, FlyingCloudError
 from flyingcloud.main import get_project_info, parse_project_yaml
 
 
@@ -74,7 +74,7 @@ exposed_ports:
                                     layers_info=layers_info)
         assert layers is not None
         assert len(layers) == 1
-        assert type(layers[0]) == BuildLayerBase
+        assert type(layers[0]) == DockerBuildLayer
         assert layers[0].registry_config['Host'] == 'quay.io'
         assert layers[0].exposed_ports == [80]
 
@@ -97,7 +97,7 @@ exposed_ports:
                                     layers_info=layers_info)
         assert layers is not None
         assert len(layers) == 1
-        assert type(layers[0]) == BuildLayerBase
+        assert type(layers[0]) == DockerBuildLayer
 
     def test_parse_project_yaml_raises_on_missing_layer_help(self):
         project_name = "flaskexample"

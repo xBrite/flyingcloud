@@ -4,10 +4,10 @@ from __future__ import unicode_literals, absolute_import, print_function
 
 import os
 
-from flyingcloud import BuildLayerBase, CommandError
+from flyingcloud import DockerBuildLayer, CommandError
 
 
-class TestRunner(BuildLayerBase):
+class TestRunner(DockerBuildLayer):
     def build(self, namespace):
         test_type = namespace.test_type
         test_path = "/venv/lib/python2.7/site-packages/flask_example_app/tests"

@@ -53,7 +53,7 @@ class DockerResultError(FlyingCloudError):
     """Error in result from Docker Daemon"""
 
 
-class _DockerBuildLayer(object):
+class DockerBuildLayer(object):
     """Build a Docker image using SaltStack
 
     Can either build from a base image or from a Dockerfile.
@@ -641,7 +641,3 @@ class _DockerBuildLayer(object):
             verify=True)
         namespace.logger.info("Docker-Machine: using %r", kwargs)
         return kwargs
-
-
-class BuildLayerBase(_DockerBuildLayer):
-    """Class to derive from"""

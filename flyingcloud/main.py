@@ -7,10 +7,10 @@ import os
 import sys
 import yaml
 
-from .base import BuildLayerBase, FlyingCloudError
+from .base import DockerBuildLayer, FlyingCloudError
 
 
-def import_class(implementation_filename, base_class):
+def import_derived_class(implementation_filename, base_class):
     impl_dir, impl_filename = os.path.split(implementation_filename)
     module_name, _ = os.path.splitext(impl_filename)
 
@@ -35,7 +35,7 @@ def get_layer(layer_base_class, app_name, layer_name, layer_data, registry_confi
     layer_info, layer_path = layer_data["info"], layer_data["path"]
     python_layer_filename = os.path.join(layer_path, "layer.py")
     if os.path.exists(python_layer_filename):
-        layer_class = import_class(python_layer_filename, layer_base_class)
+        layer_class = import_derived_class(python_layer_filename, layer_base_class)
     else:
         layer_class = layer_base_class
 
@@ -83,7 +83,7 @@ def parse_project_yaml(project_name=None, project_info=None, layers_info=None):
             if value is not None:
                 registry_config[rk] = value
 
-    layers = [get_layer(BuildLayerBase, app_name, layer_name,
+    layers = [get_layer(DockerBuildLayer, app_name, layer_name,
                         layers_info[layer_name], registry_config)
               for layer_name in project_info["layers"]]
 
@@ -115,7 +115,7 @@ def configure_layers(project_root):
 
 
 def main():
-    BuildLayerBase.check_root()
+    DockerBuildLayer.check_root()
 
     project_root = os.getcwd()
     base_dir = os.path.abspath(project_root)
