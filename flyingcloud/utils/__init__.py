@@ -7,3 +7,4 @@ from .file import abspath, make_dir, move_file_to_dir, find_in_path, find_recurs
 from .archive import make_tarfile, make_zipfile, zip_add_directory, zip_write_directory, check_zipfile
 from .vcs import find_vcs
 from .package_build import package_build
+from .importer import import_derived_class
