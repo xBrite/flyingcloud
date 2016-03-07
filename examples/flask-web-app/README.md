@@ -15,7 +15,7 @@ There is a testrunner layer that can run tests inside the Docker
 container to show that you can test the exact artifact in the exact
 environment that will be deployed to production.
 
-![Flask Example App layers](http://localhost/flask_example_app_layers.png Flask Example App Layers)
+<img src="https://raw.githubusercontent.com/cookbrite/flyingcloud/feature/documentation-improvements-1/examples/flask-web-app/flask_example_app_layers.png" width="250x" alt="Flask Example App Layers">
 
 ## Installing
 
