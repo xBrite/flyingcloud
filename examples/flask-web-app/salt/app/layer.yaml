@@ -4,6 +4,6 @@ description: >
   a simple use of OpenCV.
 parent: opencv
 exposed_ports:
-  # docker_port: host_port
-  - 80: 8080
+  # host_port: container_port(s)
+  - 8080: 80
 

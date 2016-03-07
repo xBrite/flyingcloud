@@ -93,7 +93,7 @@ class DockerBuildLayer(object):
         self.source_image_base_name = source_image_base_name
         self.help = help
         self.description = description
-        self.exposed_ports = exposed_ports
+        self.exposed_ports = exposed_ports or []
         config = self.RegistryConfig.copy()
         if registry_config:
             config.update(registry_config)
@@ -280,7 +280,7 @@ class DockerBuildLayer(object):
 
     def make_expose_ports(self, namespace):
         if self.exposed_ports:
-            port_list = " ".join(str(p) for p in self.docker_ports(self.exposed_ports))
+            port_list = " ".join(str(p) for p in self.container_ports(self.exposed_ports))
             Dockerfile = """\
                 FROM {}
                 EXPOSE {}
@@ -291,15 +291,17 @@ class DockerBuildLayer(object):
                     namespace, tag=self.layer_timestamp_name, fileobj=fileobj)
 
     @classmethod
-    def docker_ports(cls, exposed_ports):
+    def container_ports(cls, exposed_ports):
         ports = []
         for p in exposed_ports:
             if isinstance(p, dict):
                 assert len(p) == 1
-                port = p.keys()[0]
+                container_ports = p.values()[0]
+                if not isinstance(container_ports, list):
+                    container_ports = [container_ports]
             else:
-                port = p
-            ports.append(int(port))
+                container_ports = [p]
+            ports.extend(int(cp) for cp in container_ports)
         return ports
 
     @classmethod
@@ -308,11 +310,25 @@ class DockerBuildLayer(object):
         for p in exposed_ports:
             if isinstance(p, dict):
                 assert len(p) == 1
-                port = p.values()[0]
+                host_port = p.keys()[0]
             else:
-                port = p
-            ports.append(int(port))
+                host_port = p
+            ports.append(int(host_port))
         return ports
+
+    @classmethod
+    def port_bindings(cls, exposed_ports):
+        pb = {}
+        for p in exposed_ports:
+            if isinstance(p, dict):
+                host_port, container_ports = p.items()[0]
+                if not isinstance(container_ports, list):
+                    container_ports = [container_ports]
+            else:
+                host_port = p
+                container_ports = [p]
+            pb[int(host_port)] = [int(cp) for cp in container_ports]
+        return pb
 
     def build_dockerfile(self, namespace, tag, dockerfile=None, fileobj=None):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
@@ -336,7 +352,7 @@ class DockerBuildLayer(object):
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, self.docker_tags_for_image(namespace, image_name))
-        kwargs.update(self.docker_volumes(namespace, volume_map))
+        kwargs.update(self.docker_host_config(namespace, volume_map, ports))
         container = namespace.docker.create_container(
             image=image_name,
             name=container_name,
@@ -347,6 +363,19 @@ class DockerBuildLayer(object):
         container_id = container['Id']
         namespace.logger.info("Created container %s, result=%r", container_id[:12], container)
         return container_id
+
+    def docker_host_config(self, namespace, volume_map, ports, mode='rw'):
+        volumes, binds = [], []
+        for local_path, remote_path in volume_map.items():
+            volumes.append(remote_path)
+            binds.append("{}:{}:{}".format(
+                os.path.abspath(local_path), remote_path, mode))
+        return dict(
+            volumes=volumes or None,
+            host_config=namespace.docker.create_host_config(
+                binds=binds,
+                port_bindings=self.port_bindings(self.exposed_ports))
+        )
 
     def log_disk_usage(self, namespace, *extra_paths):
         for path in (
@@ -365,21 +394,8 @@ class DockerBuildLayer(object):
             r = requests.get(url, auth=(namespace.username, namespace.password))
             return r.json()
 
-    def docker_volumes(self, namespace, volume_map):
-        if not volume_map:
-            return {}
-
-        volumes, binds = [], []
-        for local_path, remote_path in volume_map.items():
-            volumes.append(remote_path)
-            binds.append("{}:{}".format(os.path.abspath(local_path), remote_path))
-        return dict(
-            volumes=volumes,
-            host_config=namespace.docker.create_host_config(binds=binds)
-        )
-
-    def docker_start(self, namespace, container_id):
-        return namespace.docker.start(container_id)
+    def docker_start(self, namespace, container_id, **kwargs):
+        return namespace.docker.start(container_id, **kwargs)
 
     def docker_exec(self, namespace, container_id, cmd, timeout=None, raise_on_error=True):
         exec_id = self.docker_exec_create(namespace, container_id, cmd)
@@ -701,3 +717,10 @@ class DockerBuildLayer(object):
         namespace.logger.info("Docker-Machine: using %r", kwargs)
         return kwargs
 
+    def port_forwarding(self, namespace):
+        container_port = 80; host_port = 8080  # FIXME
+        if self.use_docker_machine(namespace):
+            publish_args = "--publish={0}:{1}".format(host_port, container_port)
+            args = ("-f", "-N", "-L", "{0}:localhost:{0}".format(host_port))
+            # TODO: $(ps aux | grep "[s]ssh.*" + args)
+            self.docker_machine(("ssh", namespace.docker_machine_name) + args)
