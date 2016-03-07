@@ -19,5 +19,5 @@ class TestBuildLayer:
     def test_port_bindings(self):
         exposed_ports = [443, {'8080': 80}, {1111: [12, '34', 56]}]
         bindings = DockerBuildLayer.port_bindings(exposed_ports)
-        assert {443: [443], 8080: [80], 1111: [12, 34, 56]} == bindings
+        assert {443: 443, 80: 8080, 12: 1111: 34: 1111, 56: 1111} == bindings
 

@@ -137,24 +137,22 @@ class DockerBuildLayer(object):
         return method(namespace)
 
     def do_run(self, namespace):
-        return self.run(namespace)
-
-    def run(self, namespace):
-        raise NotImplementedError("'run' not implemented")
+        self.port_forwarding(namespace)
+        target_container_name = self.docker_create_container(
+            namespace,
+            self.container_name,
+            "{}:latest".format(self.container_name))
+        self.docker_start(namespace, target_container_name)
 
     def do_kill(self, namespace):
-        return self.kill(namespace)
-
-    def kill(self, namespace):
         raise NotImplementedError("'kill' not implemented")
 
     def do_build(self, namespace):
         namespace.logger.info("Build starting...")
         self.log_disk_usage(namespace)
         self.docker_info(namespace)
-        layer_inst = namespace.layer_inst
-        if layer_inst.should_build(namespace):
-            layer_inst.build(namespace)
+        if self.should_build(namespace):
+            self.build(namespace)
         namespace.logger.info("Build finished")
 
     def should_build(self, namespace):
@@ -327,8 +325,19 @@ class DockerBuildLayer(object):
             else:
                 host_port = p
                 container_ports = [p]
-            pb[int(host_port)] = [int(cp) for cp in container_ports]
+            for cp in container_ports:
+                pb[int(cp)] = int(host_port)
         return pb
+
+    def port_forwarding(self, namespace):
+        if self.use_docker_machine(namespace):
+            for host_port in self.host_ports(self.exposed_ports):
+                args = ("-f", "-N", "-L", "{0}:localhost:{0}".format(host_port))
+                # TODO: $(ps aux | grep "[s]ssh.*" + args)
+                args = ("ssh", namespace.docker_machine_name) + args
+                namespace.logger.info("port_forwarding: %r", args)
+                result = self.docker_machine(*args, _bg=True)
+                namespace.logger.info("port_forwarded: %r", result)
 
     def build_dockerfile(self, namespace, tag, dockerfile=None, fileobj=None):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
@@ -346,27 +355,29 @@ class DockerBuildLayer(object):
 
     def docker_create_container(
             self, namespace, container_name, image_name,
-            environment=None, detach=True, ports=None, volume_map=None, **kwargs):
+            environment=None, detach=True, volume_map=None, **kwargs):
         namespace.logger.info("Creating container '%s' from image %s",
                               container_name, image_name)
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, self.docker_tags_for_image(namespace, image_name))
+
         kwargs['image'] = image_name
         kwargs['name'] = container_name
         kwargs['environment'] = environment
         kwargs['detach'] = detach
-        kwargs['ports'] = ports
-        kwargs.update(self.docker_host_config(namespace, volume_map, ports))
+        kwargs['ports'] = self.container_ports(self.exposed_ports)
+        kwargs.update(self.docker_host_config(namespace, volume_map))
         namespace.logger.info("create_container: %r", kwargs)
+
         container = namespace.docker.create_container(**kwargs)
         container_id = container['Id']
         namespace.logger.info("Created container %s, result=%r", container_id[:12], container)
         return container_id
 
-    def docker_host_config(self, namespace, volume_map, ports, mode='rw'):
+    def docker_host_config(self, namespace, volume_map, mode='rw'):
         volumes, binds = [], []
-        for local_path, remote_path in volume_map.items():
+        for local_path, remote_path in (volume_map or {}).items():
             volumes.append(remote_path)
             binds.append("{}:{}:{}".format(
                 os.path.abspath(local_path), remote_path, mode))
@@ -692,10 +703,10 @@ class DockerBuildLayer(object):
         # TODO: Windows
         return platform.system() == "Darwin"
 
-    def docker_machine(self, *args):
+    def docker_machine(self, *args, **kwargs):
         with io.BytesIO() as output:
-            docker_machine = sh.Command("docker-machine")
-            docker_machine(*args, _out=output)
+            cmd = sh.Command("docker-machine")
+            cmd(*args,_out=output, **kwargs)
             return output.getvalue()
 
     def get_docker_machine_client(self, namespace, **kwargs):
@@ -716,11 +727,3 @@ class DockerBuildLayer(object):
             verify=True)
         namespace.logger.info("Docker-Machine: using %r", kwargs)
         return kwargs
-
-    def port_forwarding(self, namespace):
-        container_port = 80; host_port = 8080  # FIXME
-        if self.use_docker_machine(namespace):
-            publish_args = "--publish={0}:{1}".format(host_port, container_port)
-            args = ("-f", "-N", "-L", "{0}:localhost:{0}".format(host_port))
-            # TODO: $(ps aux | grep "[s]ssh.*" + args)
-            self.docker_machine(("ssh", namespace.docker_machine_name) + args)
