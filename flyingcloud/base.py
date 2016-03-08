@@ -96,26 +96,27 @@ class DockerBuildLayer(object):
         self.help = help
         self.description = description
         self.exposed_ports = exposed_ports or []
+
         config = self.RegistryConfig.copy()
         if registry_config:
             config.update(registry_config)
         self.registry_config = config
 
+        host, org = config['host'], config['organization']
+        host_org = "{}/{}/".format(host, org) if host and org else ""
+
         self.container_name = "{}_{}".format(self.app_name, self.layer_name)
+        self.docker_layer_name = "{}{}".format(host_org, self.container_name)
+        self.layer_latest_name = "{}:latest".format(self.docker_layer_name)
+
         if source_image_base_name:
-            self.source_image_name = "{}:{}".format(
-                self.source_image_base_name, source_version_tag)
+            self.source_image_name = "{}{}:{}".format(
+                host_org, self.source_image_base_name, source_version_tag)
         else:
             self.source_image_name = None
-        if self.registry_config['host'] and self.registry_config['organization']:
-            if self.source_image_name:
-                self.source_image_name = "{}/{}/{}".format(
-                    self.registry_config['host'],
-                    self.registry_config['organization'],
-                    self.source_image_name)
 
         # These require the command-line args to properly initialize
-        self.layer_latest_name = self.layer_timestamp_name = self.layer_squashed_name = None
+        self.layer_timestamp_name = self.layer_squashed_name = None
 
     def main(self, defaults, *layer_classes, **kwargs):
         self.check_user_is_root()
@@ -143,7 +144,7 @@ class DockerBuildLayer(object):
         target_container_name = self.docker_create_container(
             namespace,
             self.container_name,
-            "{}:latest".format(self.container_name))
+            self.layer_latest_name)
         self.docker_start(namespace, target_container_name)
 
     def do_kill(self, namespace):
@@ -176,8 +177,7 @@ class DockerBuildLayer(object):
             namespace.logger.error("%s", message)
             raise CommandError(message)
 
-        self.layer_latest_name = "{}:latest".format(self.container_name)
-        self.layer_timestamp_name = "{}:{}".format(self.container_name, namespace.timestamp)
+        self.layer_timestamp_name = "{}:{}".format(self.docker_layer_name, namespace.timestamp)
         self.layer_squashed_name = "{}-sq".format(self.layer_timestamp_name)
 
         self.initialize_build(namespace, salt_dir)
@@ -195,7 +195,7 @@ class DockerBuildLayer(object):
 
         target_container_name = self.salt_highstate(
             namespace, self.container_name,
-            source_image_name=self.source_image_name or self.container_name,
+            source_image_name=self.source_image_name,
             result_image_name=self.layer_timestamp_name,
             salt_dir=salt_dir)
 
