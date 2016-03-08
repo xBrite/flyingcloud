@@ -1,3 +1,6 @@
-description: Python base layer with recent 2.7.x version (also creates virtualenv at /venv)
+help: Python 2.7.x Layer
+description: >
+  Python base layer with recent 2.7.x version
+  (also creates virtualenv at /venv/)
 parent: sysbase
 

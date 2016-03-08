@@ -1,18 +1,17 @@
+app_name: 'flaskexample'
+description: 'Sample Flask App for FlyingCloud'
 layers:
+  - testrunner
   - app
   - opencv
   - pybase
   - sysbase
-  - testrunner
 
-app_name: 'flaskexample'
-username_varname: EXAMPLE_DOCKER_REGISTRY_USERNAME
-password_varname: EXAMPLE_DOCKER_REGISTRY_PASSWORD
-registry: quay.io
-organization: cookbrite
-registry_docker_version: "1.17"
-login_required: false
-squash_layer: false
-push_layer: false
-pull_layer: false
-
+registry:
+  host: quay.io
+  organization: cookbrite
+  docker_api_version: "1.17"
+  login_required: false
+  pull_layer: false
+  push_layer: false
+  squash_layer: false

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+if [ -z "$VIRTUAL_ENV" ]; then
+    echo "You must run inside a Python virtual environment"
+    exit 1
+fi
+
+if [ "$(uname)" == "Darwin" ]; then
+    $VIRTUAL_ENV/bin/python -m flyingcloud.main $@
+elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+    declare -a envvars=( \
+        FLYINGCLOUD_DOCKER_REGISTRY_USERNAME \
+        FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD \
+        VIRTUAL_ENV \
+        TMPDIR
+    )
+    argv=()
+
+    for ev in ${envvars[@]}; do
+        value="$(eval "echo \$$ev")"
+        argv+=("$ev=$value")
+    done
+
+    sudo ${argv[@]} $VIRTUAL_ENV/bin/python -m flyingcloud.main $@
+fi
