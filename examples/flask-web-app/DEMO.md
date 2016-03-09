@@ -1,14 +1,13 @@
 # Flask Web App Demo
 
+# Preparation
 * Before the demo:
     * clean out all Docker containers and images, except Phusion
     * Rebuild: `flyingcloud sysbase; flyingcloud pybase; flyingcloud opencv; flyingcloud app`
-* Show the app layers slide
-* Demonstrate the options:
-    * `flyingcloud --help`
-* Explore sample code:
-    * `flyingcloud.yaml`
-    * all the layers, `layer.yaml`, Salt states, Dockerfiles
+
+
+# Demo steps
+
 * Demo the web app
     * `flyingcloud --run app`
 * use web browser to go to http://localhost:8080
@@ -16,6 +15,12 @@
     * `unit` (default)
     * use `-T acceptance`
     * use `-T acceptance -B http://www.google.com` to demonstrate test failure
+* Show the app layers picture in README.md
+* Demonstrate the options:
+    * `flyingcloud --help`
+* Explore sample code:
+    * `flyingcloud.yaml`
+    * all the layers, `layer.yaml`, Salt states, Dockerfiles
 
 
 
