@@ -658,7 +658,32 @@ class DockerBuildLayer(object):
 
         parser.set_defaults(**defaults)
 
-        op_group = parser.add_mutually_exclusive_group()
+        parser.add_argument(
+            '--timeout', '-t', type=int, default=self.DefaultTimeout,
+            help="Docker client timeout in seconds. Default: %(default)s")
+        parser.add_argument(
+            '--no-pull', '-p', dest='pull_layer', action='store_false',
+            help="Do not pull Docker image from repository")
+        parser.add_argument(
+            '--no-push', '-P', dest='push_layer', action='store_false',
+            help="Do not push Docker image to repository")
+        parser.add_argument(
+            '--no-squash', '-S', dest='squash_layer', action='store_false',
+            help="Do not squash Docker image")
+        parser.add_argument(
+            '--retries', '-R', dest='retries', type=int,
+            help="How often to retry remote Docker operations, such as push/pull. "
+                 "Default: %(default)d")
+        parser.add_argument(
+            '--debug', '-D', dest='debug', action='store_true',
+            help="Set terminal logging level to DEBUG, etc")
+        if self.use_docker_machine():
+            parser.add_argument(
+                '--docker-machine-name', '-M',
+                help="Name of machine to use with docker-machine. Default: '%(default)s'")
+
+        op_group = parser.add_argument_group("Operations")
+        op_group = op_group.add_mutually_exclusive_group()
         op_group.add_argument(
             '--build', '-b', dest='operation', action='store_const', const='build',
             help="Build a layer. (Default)")
@@ -669,30 +694,9 @@ class DockerBuildLayer(object):
             '--kill', '-k', dest='operation', action='store_const', const='kill',
             help="Kill a running layer.")
 
-        parser.add_argument(
-            '--timeout', '-t', type=int, default=self.DefaultTimeout,
-            help="Docker client timeout in seconds. Default: %(default)s")
-        parser.add_argument(
-            '--no-pull', '-p', dest='pull_layer', action='store_false',
-            help="Do not pull Docker layers")
-        parser.add_argument(
-            '--no-push', '-P', dest='push_layer', action='store_false',
-            help="Do not push Docker layers")
-        parser.add_argument(
-            '--no-squash', '-S', dest='squash_layer', action='store_false',
-            help="Do not squash Docker layers")
-        parser.add_argument(
-            '--retries', '-R', dest='retries', type=int,
-            help="How often to retry remote Docker operations, such as push/pull. "
-                 "Default: %(default)s")
-        parser.add_argument(
-            '--debug', '-D', dest='debug', action='store_true',
-            help="Set terminal logging level to debug")
-        subparsers = parser.add_subparsers(help="sub-command")
-        if self.use_docker_machine():
-            parser.add_argument(
-                '--docker-machine-name', '-M',
-                help="Name of machine to use with docker-machine. Default: '%(default)s'")
+        subparsers = parser.add_subparsers(
+            title="Layer Names",
+            description="The layers which can be built, run, or killed.")
 
         for layer_class_or_inst in layer_classes:
             if type(layer_class_or_inst).__name__ == 'classobj':
