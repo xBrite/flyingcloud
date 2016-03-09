@@ -6,8 +6,21 @@
 Welcome to FlyingCloud's documentation!
 =======================================
 
-FlyingCloud is a Python library and set of tools
-that lets you build Docker_ images using masterless SaltStack_.
+FlyingCloud: makes generating Docker_ images fast and easy by using SaltStack_.
+
+**Configure your images - don't use scripts**
+
+* Use `Salt states`_ to configure images instead of using Dockerfiles - Salt already
+  can do most system administration without writing code. Salt states are simply YAML_
+  files.
+
+**Build Docker images in Continuous Integration**
+
+* FlyingCloud makes it easy to set up multi-stage CI builds of different Docker image layers.
+
+**Run tests inside your Docker images**
+
+* Test the actual artifact that you are deploying - run your tests inside your Docker images.
 
 
 Contents
@@ -29,3 +42,8 @@ Indices and tables
     http://docker.com
 .. _SaltStack:
     http://saltstack.com/
+.. _`Salt states`:
+    https://docs.saltstack.com/en/latest/topics/tutorials/starting_states.html
+.. _YAML:
+    https://en.wikipedia.org/wiki/YAML
+

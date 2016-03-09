@@ -52,7 +52,7 @@ You must build the layers in order—there is no make-style dependency system.
 ## Tips
 
 * To see what the build is doing, `tail -f flyingcloud.log` (perhaps in another window)
-* To run the `app` image locally, so that you can see it at http://localhost:8080/:
+* To run the `app` image locally, so that you can see it at http://localhost:8080/
   * `flyingcloud --run app`
   * This does a `docker run`, publishing the container's port 80 on the host's port 8080.
     On Mac, it also tunnels port 8080 via Docker Machine to port 80 inside the container.
