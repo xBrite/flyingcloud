@@ -336,7 +336,7 @@ class DockerBuildLayer(object):
         return pb
 
     def port_forwarding(self, namespace):
-        if self.use_docker_machine(namespace):
+        if self.use_docker_machine():
             for host_port in self.host_ports(self.exposed_ports):
                 ssh_args = self.ssh_port_forward_args(host_port)
                 process = self.find_port_forwarding(namespace, ssh_args)
@@ -350,7 +350,7 @@ class DockerBuildLayer(object):
                     namespace.logger.info("port_forwarded: %r", result)
 
     def kill_port_forwarding(self, namespace):
-        if self.use_docker_machine(namespace):
+        if self.use_docker_machine():
             for host_port in self.host_ports(self.exposed_ports):
                 ssh_args = self.ssh_port_forward_args(host_port)
                 process = self.find_port_forwarding(namespace, ssh_args)
@@ -651,7 +651,8 @@ class DockerBuildLayer(object):
         defaults.setdefault('push_layer', True)
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('retries', 3)
-        defaults.setdefault('docker_machine_name', 'default')
+        defaults.setdefault('docker_machine_name',
+                            os.environ.get('DOCKER_MACHINE_NAME', 'default'))
         defaults.setdefault('layer_inst', self)
         defaults.setdefault('operation', 'build')
 
@@ -688,6 +689,10 @@ class DockerBuildLayer(object):
             '--debug', '-D', dest='debug', action='store_true',
             help="Set terminal logging level to debug")
         subparsers = parser.add_subparsers(help="sub-command")
+        if self.use_docker_machine():
+            parser.add_argument(
+                '--docker-machine-name', '-M',
+                help="Name of machine to use with docker-machine. Default: '%(default)s'")
 
         for layer_class_or_inst in layer_classes:
             if type(layer_class_or_inst).__name__ == 'classobj':
@@ -729,12 +734,13 @@ class DockerBuildLayer(object):
         kwargs.setdefault('timeout', self.DefaultTimeout)
         if self.registry_config['docker_api_version']:
             kwargs.setdefault('version', self.registry_config['docker_api_version'])
-        if self.use_docker_machine(namespace):
+        if self.use_docker_machine():
             kwargs = self.get_docker_machine_client(namespace, **kwargs)
         namespace.logger.debug("Constructing docker client object with %s", kwargs)
         return docker.Client(*args, **kwargs)
 
-    def use_docker_machine(self, namespace):
+    @classmethod
+    def use_docker_machine(cls):
         # TODO: Windows
         return platform.system() == "Darwin"
 
@@ -760,5 +766,6 @@ class DockerBuildLayer(object):
             ca_cert=docker_machine_tls['CaCertPath'],
             assert_hostname=False,
             verify=True)
-        namespace.logger.info("Docker-Machine: using %r", kwargs)
+        namespace.logger.info(
+            "Docker-Machine ('%s'): using %r", namespace.docker_machine_name, kwargs)
         return kwargs
