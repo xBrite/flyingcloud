@@ -50,7 +50,7 @@ Contributing
 We welcome contributions. This project is in an early stage and under heavy development. 
 To contribute, join the Google Group or file a pull request.
 
-* `FlyingCloud Google Group <https://groups.google.com/forum/#!forum/flyingcloud-users>`_
+* `FlyingCloud Google Group <https://groups.google.com/group/flyingcloud-users>`_
 
 =======
 License
