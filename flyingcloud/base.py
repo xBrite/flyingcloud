@@ -300,7 +300,7 @@ class DockerBuildLayer(object):
         for p in exposed_ports:
             if isinstance(p, dict):
                 assert len(p) == 1
-                container_ports = p.values()[0]
+                container_ports = list(p.values())[0]
                 if not isinstance(container_ports, list):
                     container_ports = [container_ports]
             else:
@@ -314,7 +314,7 @@ class DockerBuildLayer(object):
         for p in exposed_ports:
             if isinstance(p, dict):
                 assert len(p) == 1
-                host_port = p.keys()[0]
+                host_port = list(p.keys())[0]
             else:
                 host_port = p
             ports.append(int(host_port))
@@ -325,7 +325,7 @@ class DockerBuildLayer(object):
         pb = {}
         for p in exposed_ports:
             if isinstance(p, dict):
-                host_port, container_ports = p.items()[0]
+                host_port, container_ports = list(p.items())[0]
                 if not isinstance(container_ports, list):
                     container_ports = [container_ports]
             else:
