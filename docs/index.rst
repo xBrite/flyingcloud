@@ -3,10 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to FlyingCloud's documentation!
-=======================================
 
-FlyingCloud: makes generating Docker_ images fast and easy by using SaltStack_.
+FlyingCloud: complex Docker images made simple
+----------------------------------------------
+
+FlyingCloud makes generating Docker_ images fast and easy by using SaltStack_.
 
 **Configure your images - don't use scripts**
 
@@ -21,6 +22,14 @@ FlyingCloud: makes generating Docker_ images fast and easy by using SaltStack_.
 **Run tests inside your Docker images**
 
 * Test the actual artifact that you are deploying - run your tests inside your Docker images.
+
+** Documentation
+
+ - :ref:`Installing <installing>`
+ - :ref:`Quickstart <quickstart>`
+ - :ref:`Usage <usage>`
+
+
 
 
 Contents
