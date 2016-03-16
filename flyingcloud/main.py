@@ -3,6 +3,8 @@
 from __future__ import unicode_literals, absolute_import, print_function
 
 import os
+
+import sys
 import yaml
 
 from .base import DockerBuildLayer, FlyingCloudError
@@ -56,11 +58,15 @@ def parse_project_yaml(project_info, layers_info):
 
 
 def get_project_info(project_root):
-    with open(os.path.join(project_root, "flyingcloud.yaml")) as fp:
-        project_info = yaml.load(fp)
+    project_config_file = os.path.join(project_root, "flyingcloud.yaml")
+    project_info = {}
+    if os.path.exists(project_config_file) and os.path.isfile(project_config_file):
+        with open(project_config_file) as fp:
+            project_info = yaml.load(fp)
 
     layers_info = {}
-    for layer_name in project_info['layers']:
+    layers = project_info.get('layers', [])
+    for layer_name in layers:
         layer_path = os.path.join(project_root, "salt", layer_name)
         layer_filename = os.path.join(layer_path, "layer.yaml")
         with open(layer_filename) as fp:
@@ -72,7 +78,9 @@ def get_project_info(project_root):
 
 def configure_layers(project_root):
     project_info, layers_info = get_project_info(project_root)
-    layers = parse_project_yaml(project_info, layers_info)
+    layers = None
+    if project_info != {}:
+        layers = parse_project_yaml(project_info, layers_info)
     return project_info, layers
 
 
@@ -90,16 +98,21 @@ def main():
         # TODO: argparse help
         raise
 
-    instance = layers[0]
-    instance.check_environment_variables()
-    namespace = instance.parse_args(
-        defaults,
-        *layers,
-        description=project_info['description'])
+    if layers is not None:
+        instance = layers[0]
+        instance.check_environment_variables()
+        namespace = instance.parse_args(
+            defaults,
+            *layers,
+            description=project_info['description'])
 
-    instance = namespace.layer_inst
-    instance.do_operation(namespace)
-
+        instance = namespace.layer_inst
+        instance.do_operation(namespace)
+    else:
+        instance = DockerBuildLayer('no_app', 'no_layer', 'no_image_base', "no layer present")
+        namespace = instance.parse_args(
+            defaults,
+            description='** No flyingcloud.yaml found, so no subcommands are available to build layers. Are you in the right directory?')
 
 if __name__ == '__main__':
     main()
