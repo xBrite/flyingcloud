@@ -96,26 +96,27 @@ class DockerBuildLayer(object):
         self.help = help
         self.description = description
         self.exposed_ports = exposed_ports or []
+
         config = self.RegistryConfig.copy()
         if registry_config:
             config.update(registry_config)
         self.registry_config = config
 
+        host, org = config['host'], config['organization']
+        host_org = "{}/{}/".format(host, org) if host and org else ""
+
         self.container_name = "{}_{}".format(self.app_name, self.layer_name)
+        self.docker_layer_name = "{}{}".format(host_org, self.container_name)
+        self.layer_latest_name = "{}:latest".format(self.docker_layer_name)
+
         if source_image_base_name:
-            self.source_image_name = "{}:{}".format(
-                self.source_image_base_name, source_version_tag)
+            self.source_image_name = "{}{}:{}".format(
+                host_org, self.source_image_base_name, source_version_tag)
         else:
             self.source_image_name = None
-        if self.registry_config['host'] and self.registry_config['organization']:
-            if self.source_image_name:
-                self.source_image_name = "{}/{}/{}".format(
-                    self.registry_config['host'],
-                    self.registry_config['organization'],
-                    self.source_image_name)
 
         # These require the command-line args to properly initialize
-        self.layer_latest_name = self.layer_timestamp_name = self.layer_squashed_name = None
+        self.layer_timestamp_name = self.layer_squashed_name = None
 
     def main(self, defaults, *layer_classes, **kwargs):
         self.check_user_is_root()
@@ -143,7 +144,7 @@ class DockerBuildLayer(object):
         target_container_name = self.docker_create_container(
             namespace,
             self.container_name,
-            "{}:latest".format(self.container_name))
+            self.layer_latest_name)
         self.docker_start(namespace, target_container_name)
 
     def do_kill(self, namespace):
@@ -176,8 +177,7 @@ class DockerBuildLayer(object):
             namespace.logger.error("%s", message)
             raise CommandError(message)
 
-        self.layer_latest_name = "{}:latest".format(self.container_name)
-        self.layer_timestamp_name = "{}:{}".format(self.container_name, namespace.timestamp)
+        self.layer_timestamp_name = "{}:{}".format(self.docker_layer_name, namespace.timestamp)
         self.layer_squashed_name = "{}-sq".format(self.layer_timestamp_name)
 
         self.initialize_build(namespace, salt_dir)
@@ -195,7 +195,7 @@ class DockerBuildLayer(object):
 
         target_container_name = self.salt_highstate(
             namespace, self.container_name,
-            source_image_name=self.source_image_name or self.container_name,
+            source_image_name=self.source_image_name,
             result_image_name=self.layer_timestamp_name,
             salt_dir=salt_dir)
 
@@ -300,7 +300,7 @@ class DockerBuildLayer(object):
         for p in exposed_ports:
             if isinstance(p, dict):
                 assert len(p) == 1
-                container_ports = p.values()[0]
+                container_ports = list(p.values())[0]
                 if not isinstance(container_ports, list):
                     container_ports = [container_ports]
             else:
@@ -314,7 +314,7 @@ class DockerBuildLayer(object):
         for p in exposed_ports:
             if isinstance(p, dict):
                 assert len(p) == 1
-                host_port = p.keys()[0]
+                host_port = list(p.keys())[0]
             else:
                 host_port = p
             ports.append(int(host_port))
@@ -325,7 +325,7 @@ class DockerBuildLayer(object):
         pb = {}
         for p in exposed_ports:
             if isinstance(p, dict):
-                host_port, container_ports = p.items()[0]
+                host_port, container_ports = list(p.items())[0]
                 if not isinstance(container_ports, list):
                     container_ports = [container_ports]
             else:
@@ -336,7 +336,7 @@ class DockerBuildLayer(object):
         return pb
 
     def port_forwarding(self, namespace):
-        if self.use_docker_machine(namespace):
+        if self.use_docker_machine():
             for host_port in self.host_ports(self.exposed_ports):
                 ssh_args = self.ssh_port_forward_args(host_port)
                 process = self.find_port_forwarding(namespace, ssh_args)
@@ -350,7 +350,7 @@ class DockerBuildLayer(object):
                     namespace.logger.info("port_forwarded: %r", result)
 
     def kill_port_forwarding(self, namespace):
-        if self.use_docker_machine(namespace):
+        if self.use_docker_machine():
             for host_port in self.host_ports(self.exposed_ports):
                 ssh_args = self.ssh_port_forward_args(host_port)
                 process = self.find_port_forwarding(namespace, ssh_args)
@@ -651,13 +651,39 @@ class DockerBuildLayer(object):
         defaults.setdefault('push_layer', True)
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('retries', 3)
-        defaults.setdefault('docker_machine_name', 'default')
+        defaults.setdefault('docker_machine_name',
+                            os.environ.get('DOCKER_MACHINE_NAME', 'default'))
         defaults.setdefault('layer_inst', self)
         defaults.setdefault('operation', 'build')
 
         parser.set_defaults(**defaults)
 
-        op_group = parser.add_mutually_exclusive_group()
+        parser.add_argument(
+            '--timeout', '-t', type=int, default=self.DefaultTimeout,
+            help="Docker client timeout in seconds. Default: %(default)s")
+        parser.add_argument(
+            '--no-pull', '-p', dest='pull_layer', action='store_false',
+            help="Do not pull Docker image from repository")
+        parser.add_argument(
+            '--no-push', '-P', dest='push_layer', action='store_false',
+            help="Do not push Docker image to repository")
+        parser.add_argument(
+            '--no-squash', '-S', dest='squash_layer', action='store_false',
+            help="Do not squash Docker image")
+        parser.add_argument(
+            '--retries', '-R', dest='retries', type=int,
+            help="How often to retry remote Docker operations, such as push/pull. "
+                 "Default: %(default)d")
+        parser.add_argument(
+            '--debug', '-D', dest='debug', action='store_true',
+            help="Set terminal logging level to DEBUG, etc")
+        if self.use_docker_machine():
+            parser.add_argument(
+                '--docker-machine-name', '-M',
+                help="Name of machine to use with docker-machine. Default: '%(default)s'")
+
+        op_group = parser.add_argument_group("Operations")
+        op_group = op_group.add_mutually_exclusive_group()
         op_group.add_argument(
             '--build', '-b', dest='operation', action='store_const', const='build',
             help="Build a layer. (Default)")
@@ -668,26 +694,9 @@ class DockerBuildLayer(object):
             '--kill', '-k', dest='operation', action='store_const', const='kill',
             help="Kill a running layer.")
 
-        parser.add_argument(
-            '--timeout', '-t', type=int, default=self.DefaultTimeout,
-            help="Docker client timeout in seconds. Default: %(default)s")
-        parser.add_argument(
-            '--no-pull', '-p', dest='pull_layer', action='store_false',
-            help="Do not pull Docker layers")
-        parser.add_argument(
-            '--no-push', '-P', dest='push_layer', action='store_false',
-            help="Do not push Docker layers")
-        parser.add_argument(
-            '--no-squash', '-S', dest='squash_layer', action='store_false',
-            help="Do not squash Docker layers")
-        parser.add_argument(
-            '--retries', '-R', dest='retries', type=int,
-            help="How often to retry remote Docker operations, such as push/pull. "
-                 "Default: %(default)s")
-        parser.add_argument(
-            '--debug', '-D', dest='debug', action='store_true',
-            help="Set terminal logging level to debug")
-        subparsers = parser.add_subparsers(help="sub-command")
+        subparsers = parser.add_subparsers(
+            title="Layer Names",
+            description="The layers which can be built, run, or killed.")
 
         for layer_class_or_inst in layer_classes:
             if type(layer_class_or_inst).__name__ == 'classobj':
@@ -729,12 +738,13 @@ class DockerBuildLayer(object):
         kwargs.setdefault('timeout', self.DefaultTimeout)
         if self.registry_config['docker_api_version']:
             kwargs.setdefault('version', self.registry_config['docker_api_version'])
-        if self.use_docker_machine(namespace):
+        if self.use_docker_machine():
             kwargs = self.get_docker_machine_client(namespace, **kwargs)
         namespace.logger.debug("Constructing docker client object with %s", kwargs)
         return docker.Client(*args, **kwargs)
 
-    def use_docker_machine(self, namespace):
+    @classmethod
+    def use_docker_machine(cls):
         # TODO: Windows
         return platform.system() == "Darwin"
 
@@ -760,5 +770,6 @@ class DockerBuildLayer(object):
             ca_cert=docker_machine_tls['CaCertPath'],
             assert_hostname=False,
             verify=True)
-        namespace.logger.info("Docker-Machine: using %r", kwargs)
+        namespace.logger.info(
+            "Docker-Machine ('%s'): using %r", namespace.docker_machine_name, kwargs)
         return kwargs
