@@ -33,9 +33,10 @@ docker run hello-world
 date
 id || whoami
 
+
 if [ "$TRAVIS" == "true" ]
 then
-    echo "**> Travis detected."
+    echo "**> Travis detected - will push docker images."
 fi
 
 if [ -z "$VIRTUAL_ENV" ]; then
@@ -51,7 +52,7 @@ cd "$MAINROOT/examples/flask-web-app"
 flyingcloud -h
 flyingcloud --build sysbase
 flyingcloud --build pybase
-flyingcloud --build app
 flyingcloud --build opencv
+flyingcloud --build app
 flyingcloud --run testrunner
 
