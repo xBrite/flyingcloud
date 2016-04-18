@@ -377,7 +377,7 @@ class DockerBuildLayer(object):
             dockerfile = os.path.relpath(dockerfile, namespace.base_dir)
         for line in namespace.docker.build(tag=tag, path=namespace.base_dir,
                                            dockerfile=dockerfile, fileobj=fileobj):
-            line = line.rstrip('\r\n')
+            line = line.decode('utf-8').rstrip('\r\n')
             namespace.logger.debug("%s", line)
         # Grrr! Why doesn't docker-py handle this for us?
         match = re.search(r'Successfully built ([0-9a-f]+)', line)
@@ -465,11 +465,12 @@ class DockerBuildLayer(object):
     def read_docker_output_stream(self, namespace, generator, logger_prefix):
         full_output = []
         for chunk in generator:
-            full_output.append(chunk)
+            decoded_chunk = chunk.decode('utf-8')
+            full_output.append(decoded_chunk)
             try:
-                data = json.loads(chunk)
+                data = json.loads(decoded_chunk)
             except ValueError:
-                data = chunk.rstrip('\r\n')
+                data = decoded_chunk.rstrip('\r\n')
             namespace.logger.debug("%s: %s", logger_prefix, data)
             if isinstance(data, dict) and 'error' in data:
                 raise DockerResultError("Error: {!r}".format(data))
@@ -756,7 +757,7 @@ class DockerBuildLayer(object):
 
     def get_docker_machine_client(self, namespace, **kwargs):
         # TODO: better error handling
-        docker_machine_json = self.docker_machine("inspect", namespace.docker_machine_name)
+        docker_machine_json = self.docker_machine("inspect", namespace.docker_machine_name).decode('utf-8')
         namespace.logger.debug("docker-machine json: %r", docker_machine_json)
         namespace.logger.debug("docker-machine json type: %r", type(docker_machine_json))
         docker_machine_json = json.loads(docker_machine_json)
