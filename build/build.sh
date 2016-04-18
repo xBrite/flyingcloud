@@ -53,5 +53,5 @@ flyingcloud --build sysbase
 flyingcloud --build pybase
 flyingcloud --build app
 flyingcloud --build opencv
-#flyingcloud --run testrunner
+flyingcloud --run testrunner
 
