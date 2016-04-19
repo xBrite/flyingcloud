@@ -45,6 +45,18 @@ Installation
 
     $ pip install flyingcloud
 
+
+=======
+Example
+=======
+
+The `Flask Web App Example`_ shows how to create several reusable Docker images, built
+on each other, along with a small web application and an example of running tests inside
+the Docker container.
+
+.. _Flask Web App Example: https://github.com/cookbrite/flyingcloud/tree/master/examples/flask-web-app
+
+
 ============
 Contributing
 ============
