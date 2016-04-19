@@ -36,7 +36,8 @@ id || whoami
 
 if [ "$TRAVIS" == "true" ]
 then
-    echo "**> Travis detected - will push docker images."
+    echo "**> Travis detected."
+    # TODO: push docker images on one of the build matrix builds
 fi
 
 if [ -z "$VIRTUAL_ENV" ]; then
@@ -47,6 +48,8 @@ else
 fi
 
 python "$MAINROOT/setup.py" develop
+
+py.test tests
 
 cd "$MAINROOT/examples/flask-web-app"
 flyingcloud -h
