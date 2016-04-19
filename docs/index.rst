@@ -27,7 +27,7 @@ Documentation
 -------------
 
  - :ref:`Installing <installing>`
- - :ref:`Quickstart <quickstart>`
+ - :ref:`Configuration <configuration>`
  - :ref:`Usage <usage>`
 
 Example
