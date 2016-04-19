@@ -2,6 +2,8 @@
 flyingcloud
 ***********
 
+.. image:: https://api.travis-ci.org/cookbrite/flyingcloud.png
+
 ===================================
 Build Docker images using SaltStack
 ===================================
