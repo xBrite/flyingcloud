@@ -7,6 +7,7 @@ MAINTAINER MetaBrite, Inc.
 CMD ["/sbin/my_init"]
 
 # After the image is built, we will use salt, mounted via docker run.
+RUN add-apt-repository ppa:saltstack/salt2015-8
 
 # Update the sources list
 RUN apt-get update

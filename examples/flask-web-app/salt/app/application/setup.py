@@ -7,6 +7,6 @@ setup(
     description='Flask Example app',
     author='Adam Feuer', author_email='adam@adamfeuer.com',
     url='http://adamfeuer.com/',
-    install_requires=['flask', 'requests']
+    install_requires=['flask',  'numpy', 'pillow', 'pytest', 'requests', 'uwsgi']
 )
 

@@ -1,4 +1,4 @@
 base:
   '*':
-    - ubuntu-packages
     - python-requirements
+    - ubuntu-packages
