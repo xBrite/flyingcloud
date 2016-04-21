@@ -356,12 +356,13 @@ class DockerBuildLayer(object):
                               "-from", "root")
             output_temp = open(output_temp.name, 'rb')
 
+            namespace.logger.debug("Known images (before loading squashed): %r", namespace.docker.images())
             # docker load tar2
             namespace.logger.info("Loading squashed image (%d bytes)", os.path.getsize(output_temp.name))
             namespace.docker.load_image(data=output_temp)
             output_temp.close()
 
-            namespace.logger.debug("Known images: %r", namespace.docker.images())
+            namespace.logger.debug("Known images (after loading squashed): %r", namespace.docker.images())
             _, tag = cls.image_name2repo_tag(squashed_image_name)
             cls.docker_tag(namespace, latest_image_name, tag=tag)
         finally:
