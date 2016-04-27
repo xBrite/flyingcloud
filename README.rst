@@ -12,6 +12,7 @@ masterless `SaltStack <http://saltstack.com/>`_ instead of (or in addition to) u
 FlyingCloud is easy to run from the commandline, and built to be run on
 a Continuous Integration server.
 
+
 ============================
 Why would I want to do that?
 ============================
@@ -20,6 +21,7 @@ Why would I want to do that?
 * Because you want to configure your Docker layers instead of writing shell scripts.
 * Because you want to install the same software stack on developer workstations and don't want to
   maintain two separate ways of installing a complex stack of software.
+
 
 ============
 How it works
@@ -33,6 +35,7 @@ for each Docker layer. Layers can also run custom Python code if necessary.
 Salt states can do many system administration tasks solely with configuration.
 `Here's a list of all the built-in Salt states <https://docs.saltstack.com/en/develop/ref/states/all/index.html>`_.
 And you can `write your own <https://docs.saltstack.com/en/latest/ref/states/writing.html>`_.
+
 
 ============
 Installation
@@ -54,6 +57,13 @@ the Docker container.
 .. _Flask Web App Example: https://github.com/cookbrite/flyingcloud/tree/master/examples/flask-web-app
 
 
+=============
+Documentation
+=============
+
+* `FlyingCloud <http://flyingcloud.readthedocs.io/en/latest/>`_
+
+
 ============
 Contributing
 ============
@@ -63,6 +73,7 @@ We welcome contributions. This project is in an early stage and under heavy deve
 To contribute, join the Google Group or file a pull request.
 
 * `FlyingCloud Google Group <https://groups.google.com/group/flyingcloud-users>`_
+
 
 =======
 License
