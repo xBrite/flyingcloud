@@ -192,6 +192,7 @@ class DockerBuildLayer(object):
             if self.salt_error(salt_output):
                 error = ExecError("salt_highstate failed.")
                 commit = self.CommitFailedBuilds
+                result_image_name += "_fail"
 
             if commit:
                 result = self.docker_commit(namespace, container_name, result_image_name)
@@ -199,7 +200,7 @@ class DockerBuildLayer(object):
 
             if error:
                 if commit and namespace.push_layer and self.PushLayer:
-                    self.docker_push(namespace, self.layer_timestamp_name + "_fail")
+                    self.docker_push(namespace, result_image_name)
                 raise error
         except:
             namespace.logger.exception("Salting failed")
