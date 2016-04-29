@@ -74,7 +74,8 @@ class DockerBuildLayer(object):
     SaltStateDir = None
     CommandName = None
     SaltExecTimeout = 45 * 60  # seconds, for long-running commands
-    DefaultTimeout = 5 * 60 # need longer than default timeout for most commands
+    DefaultTimeout = 5 * 60  # need longer than default timeout for most commands
+    CommitFailedBuilds = False
     USERNAME_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
     PASSWORD_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
 
@@ -170,6 +171,8 @@ class DockerBuildLayer(object):
         namespace.logger.info(
             "Starting salt_highstate: source_image_name=%s, container_name=%s, salt_dir=%s",
             source_image_name, container_name, salt_dir)
+        error = None
+        commit = True
         try:
             container_name = self.docker_create_container(
                 namespace, container_name, source_image_name,
@@ -187,10 +190,17 @@ class DockerBuildLayer(object):
             namespace.logger.info(
                 "Finished Salting: duration=%d:%02d minutes", duration // 60, duration % 60)
             if self.salt_error(salt_output):
-                raise ExecError("salt_highstate failed.")
+                error = ExecError("salt_highstate failed.")
+                commit = self.CommitFailedBuilds
 
-            result = self.docker_commit(namespace, container_name, result_image_name)
-            namespace.logger.info("Committed: %r", result)
+            if commit:
+                result = self.docker_commit(namespace, container_name, result_image_name)
+                namespace.logger.info("Committed: %s -> %r", result_image_name, result)
+
+            if error:
+                if commit and namespace.push_layer and self.PushLayer:
+                    self.docker_push(namespace, self.layer_timestamp_name + "_fail")
+                raise error
         except:
             namespace.logger.exception("Salting failed")
             raise
