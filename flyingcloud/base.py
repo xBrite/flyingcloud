@@ -508,6 +508,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('push_layer', True)
         defaults.setdefault('retries', 3)
         defaults.setdefault('layer_cls', cls)
+        defaults.setdefault('use_docker_machine', True)
 
         parser.set_defaults(**defaults)
 
@@ -527,6 +528,15 @@ class DockerBuildLayer(object):
         parser.add_argument(
             '--debug', '-D', dest='debug', action='store_true',
             help="Set terminal logging level to debug")
+        # TODO: Windows
+        if platform.system() == "Darwin":
+            parser.add_argument(
+                '--use-docker-machine', '-M', dest='use_docker_machine', action='store_true',
+                help="Use Docker Machine rather than Docker for Mac (if available). "
+                     "Default: %(default)s")
+            parser.add_argument(
+                '--no-use-docker-machine', '-m', dest='use_docker_machine', action='store_false',
+                help="Do not use Docker Machine")
         subparsers = parser.add_subparsers(help="sub-command")
 
         for layer_cls in layer_classes:
@@ -560,7 +570,7 @@ class DockerBuildLayer(object):
         kwargs.setdefault('timeout', cls.DefaultTimeout)
         if cls.RegistryDockerVersion:
             kwargs.setdefault('version', cls.RegistryDockerVersion)
-        if platform.system() == "Darwin":
+        if platform.system() == "Darwin" and namespace.use_docker_machine:
             kwargs = cls.get_docker_machine_client(namespace, **kwargs)
         return docker.Client(*args, **kwargs)
 
