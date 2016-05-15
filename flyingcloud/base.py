@@ -570,8 +570,11 @@ class DockerBuildLayer(object):
         kwargs.setdefault('timeout', cls.DefaultTimeout)
         if cls.RegistryDockerVersion:
             kwargs.setdefault('version', cls.RegistryDockerVersion)
-        if platform.system() == "Darwin" and namespace.use_docker_machine:
-            kwargs = cls.get_docker_machine_client(namespace, **kwargs)
+        if platform.system() == "Darwin":
+            if namespace.use_docker_machine:
+                kwargs = cls.get_docker_machine_client(namespace, **kwargs)
+            else:
+                namespace.logger.info("Not using docker-machine")
         return docker.Client(*args, **kwargs)
 
     @classmethod
