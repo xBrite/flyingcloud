@@ -336,7 +336,7 @@ class DockerBuildLayer(object):
         return pb
 
     def port_forwarding(self, namespace):
-        if self.use_docker_machine():
+        if self.use_docker_machine(namespace):
             for host_port in self.host_ports(self.exposed_ports):
                 ssh_args = self.ssh_port_forward_args(host_port)
                 process = self.find_port_forwarding(namespace, ssh_args)
@@ -346,11 +346,11 @@ class DockerBuildLayer(object):
                 else:
                     args = ["ssh", namespace.docker_machine_name] + ssh_args
                     namespace.logger.info("port_forwarding: %r", args)
-                    result = self.docker_machine(*args, _bg=True)
+                    result = self.run_docker_machine(*args, _bg=True)
                     namespace.logger.info("port_forwarded: %r", result)
 
     def kill_port_forwarding(self, namespace):
-        if self.use_docker_machine():
+        if self.use_docker_machine(namespace):
             for host_port in self.host_ports(self.exposed_ports):
                 ssh_args = self.ssh_port_forward_args(host_port)
                 process = self.find_port_forwarding(namespace, ssh_args)
@@ -652,6 +652,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('push_layer', True)
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('retries', 3)
+        defaults.setdefault('use_docker_machine', True)
         defaults.setdefault('docker_machine_name',
                             os.environ.get('DOCKER_MACHINE_NAME', 'default'))
         defaults.setdefault('layer_inst', self)
@@ -678,10 +679,19 @@ class DockerBuildLayer(object):
         parser.add_argument(
             '--debug', '-D', dest='debug', action='store_true',
             help="Set terminal logging level to DEBUG, etc")
-        if self.use_docker_machine():
+        if self.docker_machine_platform():
             parser.add_argument(
-                '--docker-machine-name', '-M',
-                help="Name of machine to use with docker-machine. Default: '%(default)s'")
+                '--use-docker-machine', '-M', dest='use_docker_machine',
+                action='store_true',
+                help = "Use Docker Machine rather than Docker for Mac/Windows. "
+                       "Default: %(default)s")
+            parser.add_argument(
+                '--no-use-docker-machine', '-m', dest='use_docker_machine',
+                action='store_false',
+                help = "Do not use Docker Machine")
+            parser.add_argument(
+                '--docker-machine-name', '-N',
+                help="Name of machine to use with Docker Machine. Default: '%(default)s'")
 
         op_group = parser.add_argument_group("Operations")
         op_group = op_group.add_mutually_exclusive_group()
@@ -739,17 +749,20 @@ class DockerBuildLayer(object):
         kwargs.setdefault('timeout', self.DefaultTimeout)
         if self.registry_config['docker_api_version']:
             kwargs.setdefault('version', self.registry_config['docker_api_version'])
-        if self.use_docker_machine():
+        if self.use_docker_machine(namespace):
             kwargs = self.get_docker_machine_client(namespace, **kwargs)
         namespace.logger.debug("Constructing docker client object with %s", kwargs)
         return docker.Client(*args, **kwargs)
 
     @classmethod
-    def use_docker_machine(cls):
-        # TODO: Windows
-        return platform.system() == "Darwin"
+    def use_docker_machine(cls, namespace):
+        return namespace.use_docker_machine and cls.docker_machine_platform()
 
-    def docker_machine(self, *args, **kwargs):
+    @classmethod
+    def docker_machine_platform(cls):
+        return platform.system() in {"Darwin", "Windows"}
+
+    def run_docker_machine(self, *args, **kwargs):
         with io.BytesIO() as output:
             cmd = sh.Command("docker-machine")
             cmd(*args,_out=output, **kwargs)
@@ -757,7 +770,7 @@ class DockerBuildLayer(object):
 
     def get_docker_machine_client(self, namespace, **kwargs):
         # TODO: better error handling
-        docker_machine_json = self.docker_machine("inspect", namespace.docker_machine_name).decode('utf-8')
+        docker_machine_json = self.run_docker_machine("inspect", namespace.docker_machine_name).decode('utf-8')
         namespace.logger.debug("docker-machine json: %r", docker_machine_json)
         namespace.logger.debug("docker-machine json type: %r", type(docker_machine_json))
         docker_machine_json = json.loads(docker_machine_json)
