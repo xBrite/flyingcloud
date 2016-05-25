@@ -169,6 +169,10 @@ class DockerBuildLayer(object):
         """Override if you need special handling"""
         pass
 
+    def post_build(self, namespace, target_container_name, salt_dir):
+        """Override if you need special handling"""
+        pass
+
     def build(self, namespace):
         salt_dir = os.path.abspath(os.path.join(namespace.salt_dir, self.layer_name))
 
@@ -261,6 +265,8 @@ class DockerBuildLayer(object):
                 "Finished Salting: duration=%d:%02d minutes", duration // 60, duration % 60)
             if self.salt_error(salt_output):
                 raise ExecError("salt_highstate failed.")
+
+            self.post_build(namespace, target_container_name, salt_dir)
 
             result = self.docker_commit(namespace, target_container_name, result_image_name)
             namespace.logger.info("Committed: %r", result)
