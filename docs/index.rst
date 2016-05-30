@@ -6,6 +6,7 @@ FlyingCloud makes generating Docker_ images fast and easy by using SaltStack_.
 
 .. image:: FlyingCloud_logo.jpg
 
+
 Advantages
 ==========
 
@@ -23,12 +24,14 @@ Advantages
 
 * Test the actual artifact that you are deploying — run your tests inside your Docker images.
 
+
 Documentation
 -------------
 
  - :ref:`Installing <installing>`
  - :ref:`Configuration <configuration>`
  - :ref:`Usage <usage>`
+
 
 Example
 -------
@@ -38,6 +41,11 @@ built on each other,
 along with a small web application
 and an example of running tests inside the Docker container.
 
+
+Presentations
+-------------
+
+* `PuPPy, March 2016`_
 
 
 Contributing
@@ -49,6 +57,7 @@ To contribute, join the Google Group or file a pull request.
 * `GitHub FlyingCloud Repository`_
 * `FlyingCloud Google Group`_
 * `FlyingCloud at PyPI`_
+
 
 License
 -------
@@ -89,6 +98,8 @@ Indices and tables
     http://www.apache.org/licenses/LICENSE-2.0
 .. _Flask Web App Example:
     https://github.com/cookbrite/flyingcloud/tree/master/examples/flask-web-app
+.. _PuPPy, March 2016:
+    https://youtu.be/MbBzuI3p5xw?t=25m23s
 .. _GitHub FlyingCloud Repository:
     https://github.com/cookbrite/flyingcloud/
 .. _FlyingCloud Google Group:
