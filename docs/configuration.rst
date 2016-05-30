@@ -7,7 +7,7 @@ Configuring FlyingCloud
 Project Layout
 --------------
 
-Create directories that define your project - each layer will have its own subdirectory:
+Create directories that define your project — each layer will have its own subdirectory:
 
 ::
 
@@ -17,10 +17,10 @@ Create directories that define your project - each layer will have its own subdi
         pybase/
         sysbase/
 
-``flask-web-app/`` is the project directory. This is where the ``flyingcloud.yaml`` project definition
-file goes.
+``flask-web-app/`` is the project directory.
+This is where the ``flyingcloud.yaml`` project definition file goes.
 
-Project Definition - flyingcloud.yaml
+Project Definition — flyingcloud.yaml
 -------------------------------------
 
 Example ``flyingcloud.yaml``:
@@ -52,14 +52,15 @@ Layer Definition Using a Dockerfile
 Each subdirectory holds files related to that layer as well as a ``layer.yaml``
 that defines the layer.
 
-The first layer is usually a "base" layer that will install Salt, perhaps install
-some other debugging tools, and configure Salt to fail hard if any state fails.
-This is not the default for usign Salt in production, as Salt usually wants to
-configure servers on a "best-effort" basis and go on with the rest of the configuration
-if something fails.
+The first layer is usually a "base" layer that will install Salt,
+perhaps install some other debugging tools,
+and configure Salt to *fail hard* if any state fails.
+Fail-hard is not the default for usign Salt in production,
+as Salt usually wants to configure servers on a "best-effort" basis
+and go on with the rest of the configuration if something fails.
 
-But in a build system, we don't want this to happen, so we configure Salt to
-"fail hard."
+But in a build system, we don't want this to happen,
+so we configure Salt to fail-hard.
 
 Example ``layer.yaml`` that for a base layer that builds a Dockerfile:
 
@@ -87,14 +88,15 @@ The only other file in this directory would be the Dockerfile:
     # Clean up APT when done.
     RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-This Docker layer installs salt and some debugging tools.
+This Docker layer installs Salt and some debugging tools.
 
 Telling Salt to Fail Hard
 -------------------------
 
 Note the line of the file
-``RUN echo "failhard: True" >> /etc/salt/minion``. This is very important. It tells
-salt to fail the build if any salt states failed.
+``RUN echo "failhard: True" >> /etc/salt/minion``.
+This is very important.
+It tells SaltStack to fail the build if any Salt states failed.
 
 **You will need this line (or its equivalent) in all your base layers.**
 
@@ -178,7 +180,7 @@ Here's the ``layer.yaml``:
       unit and acceptance tests inside the Docker container.
     parent: app
 
-Here's the python program that runs the tests - it must define a class that derives
+Here's the python program that runs the tests — it must define a class that derives
 from ``DockerBuildLayer``:
 
 .. code-block:: python
