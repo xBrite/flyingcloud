@@ -73,6 +73,7 @@ class DockerBuildLayer(object):
     RegistryConfig = dict(
         host=None,
         organization=None,
+        aws_ecr_region=None,
         docker_api_version=None,
         login_required=True,
         pull_layer=True,
@@ -87,6 +88,7 @@ class DockerBuildLayer(object):
             source_image_base_name,
             help,
             description=None,
+            container_name=None,
             exposed_ports=None,
             registry_config=None,
             source_version_tag="latest"
@@ -103,10 +105,9 @@ class DockerBuildLayer(object):
             config.update(registry_config)
         self.registry_config = config
 
-        host, org = config['host'], config['organization']
-        host_org = "{}/{}/".format(host, org) if host and org else ""
+        host_org = self.repository_host(config)
 
-        self.container_name = "{}_{}".format(self.app_name, self.layer_name)
+        self.container_name = container_name or "{}_{}".format(self.app_name, self.layer_name)
         self.docker_layer_name = "{}{}".format(host_org, self.container_name)
         self.layer_latest_name = "{}:latest".format(self.docker_layer_name)
 
@@ -125,13 +126,24 @@ class DockerBuildLayer(object):
         namespace = self.parse_args(defaults, *layer_classes, **kwargs)
         self.do_operation(namespace)
 
+    def repository_host(self, config):
+        host, org = config['host'], config['organization']
+        if host:
+            if org:
+                return "{}/{}/".format(host, org)
+            else:
+                return "{}/".format(host)
+        else:
+            return  ""
+
     @classmethod
     def check_user_is_root(cls):
         if platform.system() == "Linux" and os.geteuid() != 0 :
             raise NotSudoError("You must be root (use sudo)")
 
     def check_environment_variables(self):
-        if self.registry_config['host'] and self.registry_config['login_required']:
+        cfg = self.registry_config
+        if cfg['host'] and cfg['login_required'] and not cfg['aws_ecr_region']:
             for v in [self.USERNAME_ENV_VAR, self.PASSWORD_ENV_VAR]:
                 if v not in os.environ:
                     raise EnvironmentVarError("Environment variable {} not defined".format(v))
@@ -756,12 +768,19 @@ class DockerBuildLayer(object):
         namespace.logger = self.configure_logging(namespace)
         namespace.docker = self.docker_client(namespace, timeout=namespace.timeout)
 
+        if self.registry_config['aws_ecr_region']:
+            credentials_namespace, registry = self.ecr_get_login(
+                self.registry_config['aws_ecr_region'])
+        else:
+            registry = self.registry_config['host']
+            credentials_namespace = namespace
+
         self.docker_login(
             namespace,
-            username=namespace.username,
-            password=namespace.password,
-            email=namespace.email,
-            registry=self.registry_config['host'])
+            username=credentials_namespace.username,
+            password=credentials_namespace.password,
+            email=credentials_namespace.email,
+            registry=registry)
 
         self.add_additional_configuration(namespace)
 
@@ -769,7 +788,25 @@ class DockerBuildLayer(object):
 
     @classmethod
     def add_parser_options(cls, subparser):
+        """Override"""
         pass
+
+    def ecr_get_login(self, aws_ecr_region):
+        with io.BytesIO() as output:
+            sh.Command("aws")("ecr", "get-login", "--region", aws_ecr_region, _out=output)
+            docker_login = output.getvalue()
+        return self.parse_docker_login(docker_login.split())
+
+    @classmethod
+    def parse_docker_login(cls, args):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--username', '-u')
+        parser.add_argument('--password', '-p')
+        parser.add_argument('--email', '-e')
+        parser.add_argument('registry')
+        assert ["docker", "login"] == args[:2]
+        namespace = parser.parse_args(args[2:])
+        return namespace, namespace.registry
 
     def docker_client(self, namespace, *args, **kwargs):
         namespace.logger.info("Platform is '%s'.", platform.system())
@@ -792,7 +829,7 @@ class DockerBuildLayer(object):
     def run_docker_machine(self, *args, **kwargs):
         with io.BytesIO() as output:
             cmd = sh.Command("docker-machine")
-            cmd(*args,_out=output, **kwargs)
+            cmd(*args, _out=output, **kwargs)
             return output.getvalue()
 
     def get_docker_machine_client(self, namespace, **kwargs):
