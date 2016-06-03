@@ -68,6 +68,7 @@ class DockerBuildLayer(object):
 
     USERNAME_ENV_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_USERNAME'
     PASSWORD_ENV_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD'
+    EMAIL_ENV_VAR = 'FLYINGCLOUD_DOCKER_REGISTRY_EMAIL'
 
     RegistryConfig = dict(
         host=None,
@@ -605,19 +606,24 @@ class DockerBuildLayer(object):
         else:
             raise DockerResultError(give_up_message)
 
-    def docker_login(self, namespace, username, password, registry):
+    def docker_login(self, namespace, username, password, email=None, registry=None):
         if registry:
             if username and password:
                 namespace.logger.info(
-                    "Logging in to registry '%s' as user '%s'",
-                    registry, namespace.username)
+                    "Logging in to registry=%r, username=%r, email=%r, password=%r",
+                    registry, username, email, self.elide_password(password))
                 return namespace.docker.login(
                     username=username,
                     password=password,
+                    email=email,
                     registry=registry)
             elif self.registry_config['login_required']:
                 assert username, "No username"
                 assert password, "No password"
+
+    @classmethod
+    def elide_password(cls, password):
+        return password and "{}...{}".format(password[:2], password[-2:])
 
     def docker_info(self, namespace):
         info = namespace.docker.info()
@@ -654,15 +660,20 @@ class DockerBuildLayer(object):
         defaults.setdefault(
             'timestamp',
             datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
+        defaults.setdefault('layer_inst', self)
+        defaults.setdefault('operation', 'build')
+
         defaults.setdefault('pull_layer', True)
         defaults.setdefault('push_layer', True)
         defaults.setdefault('squash_layer', True)
         defaults.setdefault('retries', 3)
+        defaults.setdefault('username', os.environ.get(self.USERNAME_ENV_VAR))
+        defaults.setdefault('password', os.environ.get(self.PASSWORD_ENV_VAR))
+        defaults.setdefault('email', os.environ.get(self.EMAIL_ENV_VAR))
+
         defaults.setdefault('use_docker_machine', True)
         defaults.setdefault('docker_machine_name',
                             os.environ.get('DOCKER_MACHINE_NAME', 'default'))
-        defaults.setdefault('layer_inst', self)
-        defaults.setdefault('operation', 'build')
 
         parser.set_defaults(**defaults)
 
@@ -679,12 +690,23 @@ class DockerBuildLayer(object):
             '--no-squash', '-S', dest='squash_layer', action='store_false',
             help="Do not squash Docker image")
         parser.add_argument(
-            '--retries', '-R', dest='retries', type=int,
+            '--retries', '-R', type=int,
             help="How often to retry remote Docker operations, such as push/pull. "
                  "Default: %(default)d")
         parser.add_argument(
-            '--debug', '-D', dest='debug', action='store_true',
+            '--debug', '-D', action='store_true',
             help="Set terminal logging level to DEBUG, etc")
+        parser.add_argument(
+            '--username', '-u',
+            help="Username for Docker registry. Default: %(default)r")
+        parser.add_argument(
+            '--password', '-w',
+            help="Password for Docker registry. Default: {!r}".format(
+                self.elide_password(parser.get_default('password'))))
+        parser.add_argument(
+            '--email', '-e',
+            help="Email address for Docker registry. Default: %(default)r")
+
         if self.docker_machine_platform():
             parser.add_argument(
                 '--use-docker-machine', '-M', dest='use_docker_machine',
@@ -732,14 +754,13 @@ class DockerBuildLayer(object):
         namespace = parser.parse_args()
 
         namespace.logger = self.configure_logging(namespace)
-        namespace.username = os.environ.get(self.USERNAME_ENV_VAR)
-        namespace.password = os.environ.get(self.PASSWORD_ENV_VAR)
         namespace.docker = self.docker_client(namespace, timeout=namespace.timeout)
 
         self.docker_login(
             namespace,
-            namespace.username,
-            namespace.password,
+            username=namespace.username,
+            password=namespace.password,
+            email=namespace.email,
             registry=self.registry_config['host'])
 
         self.add_additional_configuration(namespace)
