@@ -16,41 +16,68 @@ from .vcs import find_vcs
 from .archive import abspath, zip_add_directory, zip_write_directory, check_zipfile
 
 
-VERSION = "0.2.1"
+VERSION = "0.3.0"
 
 
-def parse_args(args=None, namespace=None):
+def parse_args(args=None, namespace=None, defaults=None):
     parser = argparse.ArgumentParser(
         description="Package a Cookbrite application "
                     "for deployment to Elastic Beanstalk.",
     )
-    parser.add_argument(
-        'package_path',
-        nargs="?", default=".",
-        help="Where the application lives"
-    )
 
+    defaults = defaults or {}
+    defaults.setdefault(
+        'timestamp_format',
+        '%Y%m%dt%H%M%Sz')
+    defaults.setdefault(
+        'build_date',
+        datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
+    defaults.setdefault('build_number', 12345)
+    defaults.setdefault(
+        'version_format',
+        '{build_date}-{branch_name}-b{build_number:05d}-{sha}')
+    defaults.setdefault('package_path', os.getcwd())
+
+    vcs = find_vcs(defaults['package_path'])
+    version_data = build_version_data(vcs, defaults['build_date'], defaults['build_number'])
+    defaults.update(version_data)
+
+    parser.set_defaults(**defaults)
+
+    parser.add_argument(
+        'package_path', nargs="?",
+        help="Where the application lives. Default: %(default)r"
+    )
     parser.add_argument(
         '-V', '--version', action='version', version=VERSION,
         help="show program's version number and exit")
-
     parser.add_argument(
         '-v', '--verbose', action='store_true',
         help="Be more verbose")
-
     parser.add_argument(
         '--dry-run', '-n',
         action='store_true', default=False,
         help="Show what would be generated.")
-
     parser.add_argument(
         '--prefix', '-p',
         help="Prefix the zipfile_name with this string.  Default: %(default)r")
-
     parser.add_argument(
         '--emit-build-info-only', '-e',
         action='store_true', default=False,
         help="Emit the version.json file and exit")
+    parser.add_argument(
+        '--build-date', '-d',
+        help="Build date. Default: %(default)r")
+    parser.add_argument(
+        '--build-number', '-b', type=int,
+        help="Build number to set (used in /version/ API response). "
+             "Default: %(default)r")
+    parser.add_argument(
+        '--branch-name', '-B',
+        help="VCS branch name. Default: %(default)r")
+    parser.add_argument(
+        '--vcs-sha', '-s', dest='sha',
+        help="VCS branch SHA. Default: %(default)r")
 
     # TODO: get rid of --aux-package and --packages.
     # Bootstrap's --make-local-packages supersedes them.
@@ -58,40 +85,28 @@ def parse_args(args=None, namespace=None):
         '--aux-package', '-a',
         nargs=2, metavar=('PACKAGE_PATH', 'PREFIX_DIR'),
         help="Auxiliary package")
-
     parser.add_argument(
         '--packages', '-P',
         nargs=3, metavar=('MODULE_PATH', 'FUNC', 'TARGET_DIR'),
         help="Additional third-party packages")
 
-    parser.add_argument(
-        '--build-number', '-b',
-        default=12345, type=int,
-        help="Build number to set (used in /version/ API response)")
-
-    return parser.parse_args(args, namespace)
-
-
-def initialize_namespace(namespace):
+    namespace = parser.parse_args(args, namespace)
     namespace.package_path = abspath(namespace.package_path)
     namespace.vcs = find_vcs(namespace.package_path)
-    namespace.build_time = datetime.datetime.utcnow()  # Bamboo and EB are on UTC
-    namespace.build_time_str = namespace.build_time.strftime("%Y%m%dt%H%M")
-    namespace.version_format = '{build_date}-{branch_name}-b{build_number:05d}-{sha}'
-    namespace.version_data = build_version_data(namespace)
+    namespace.version_data = build_version_data(namespace.vcs, namespace.build_date, namespace.build_number)
     namespace.version_label = namespace.version_format.format(**namespace.version_data)
     namespace.zipfile_name = '{prefix}-{version_label}.zip'.format(**namespace.__dict__)
+    return namespace
 
 
-def build_version_data(namespace):
-    version_data = dict(
-        build_date=namespace.build_time_str,
-        branch_name=(namespace.vcs.current_branch() if namespace.vcs else os.getenv(
+def build_version_data(vcs, build_date, build_number):
+    return dict(
+        build_date=build_date,
+        branch_name=(vcs.current_branch() if vcs else os.getenv(
             "bamboo_repository_branch_name", "unknown")).replace('/', '-'),
-        sha=(namespace.vcs.sha() if namespace.vcs else os.getenv("bamboo_repository_revision_number", "unknown"))[:7],
-        build_number=namespace.build_number,
-        )
-    return version_data
+        sha=(vcs.sha() if vcs else os.getenv("bamboo_repository_revision_number", "unknown"))[:7],
+        build_number=build_number,
+    )
 
 
 def build_info(namespace):
@@ -160,10 +175,9 @@ def zip_package(namespace, exclude_dirs=None):
     return namespace.zipfile_name
 
 
-def build_package(args=None, exclude_dirs=None):
+def build_package(args=None, exclude_dirs=None, defaults=None):
     zipfile_name = None
-    namespace = parse_args(args)
-    initialize_namespace(namespace)
+    namespace = parse_args(args, defaults=defaults)
     emit_build_info(namespace)
     if not namespace.emit_build_info_only:
         zipfile_name = zip_package(namespace, exclude_dirs=exclude_dirs)
