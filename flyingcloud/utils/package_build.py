@@ -160,7 +160,7 @@ def zip_package(namespace, exclude_dirs=None):
     return namespace.zipfile_name
 
 
-def package_build(args=None, exclude_dirs=None):
+def build_package(args=None, exclude_dirs=None):
     zipfile_name = None
     namespace = parse_args(args)
     initialize_namespace(namespace)
@@ -171,5 +171,5 @@ def package_build(args=None, exclude_dirs=None):
 
 
 if __name__ == '__main__':
-    zipfile_name = package_build()
+    zipfile_name = build_package()
     print(zipfile_name)  # For capture by calling scripts

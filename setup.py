@@ -44,4 +44,9 @@ setup(
     scripts=[
         'flyingcloud/flyingcloud',
     ],
+    entry_points={
+        'console_scripts': [
+            'fc_pkg_build = flyingcloud.utils.package_build:build_package',
+        ]
+    },
 )
