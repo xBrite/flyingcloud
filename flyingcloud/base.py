@@ -792,8 +792,9 @@ class DockerBuildLayer(object):
         pass
 
     def ecr_get_login(self, aws_ecr_region):
+        aws_cli = os.path.join(os.getenv("VIRTUAL_ENV"), "bin", "aws")
         with io.BytesIO() as output:
-            sh.Command("aws")("ecr", "get-login", "--region", aws_ecr_region, _out=output)
+            sh.Command(aws_cli)("ecr", "get-login", "--region", aws_ecr_region, _out=output)
             docker_login = output.getvalue()
         return self.parse_docker_login(docker_login.split())
 
