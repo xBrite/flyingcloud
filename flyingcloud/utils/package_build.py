@@ -64,7 +64,11 @@ def parse_args(args=None, namespace=None, defaults=None):
     parser.add_argument(
         '--emit-build-info-only', '-e',
         action='store_true', default=False,
-        help="Emit the version.json file and exit")
+        help="Emit the version.json file and exit.")
+    parser.add_argument(
+        '--build-info-path', '-i',
+        metavar="INFO_PATH",
+        help="Emit the version.json file in directory INFO_PATH relative to 'package_path'.")
     parser.add_argument(
         '--build-date', '-d',
         help="Build date. Default: %(default)r")
@@ -119,7 +123,10 @@ def emit_build_info(namespace):
     info = build_info(namespace)
     json_info = json.dumps(info, indent=4)
     if not namespace.dry_run:
-        with open(os.path.join(namespace.package_path, "version.json"), "w") as f:
+        target_dir = namespace.package_path
+        if namespace.build_info_path:
+            target_dir = os.path.join(target_dir, namespace.build_info_path)
+        with open(os.path.join(target_dir, "version.json"), "w") as f:
             f.write(json_info)
             f.write('\n')
     if namespace.verbose:
@@ -176,12 +183,11 @@ def zip_package(namespace, exclude_dirs=None):
 
 
 def build_package(args=None, exclude_dirs=None, defaults=None):
-    zipfile_name = None
     namespace = parse_args(args, defaults=defaults)
-    emit_build_info(namespace)
+    result = emit_build_info(namespace)
     if not namespace.emit_build_info_only:
-        zipfile_name = zip_package(namespace, exclude_dirs=exclude_dirs)
-    return zipfile_name
+        result = zip_package(namespace, exclude_dirs=exclude_dirs)
+    return result
 
 
 if __name__ == '__main__':
