@@ -21,3 +21,12 @@ class TestBuildLayer:
         bindings = DockerBuildLayer.port_bindings(exposed_ports)
         assert {443: 443, 80: 8080, 12: 1111, 34: 1111, 56: 1111} == bindings
 
+    def test_parse_docker_login(self):
+        args = ["docker", "login", "-u", "ahab", "-p", "CallMeIshmael",
+                "-e", "none", "https://whitewhale.com/mobydick"]
+        namespace, registry = DockerBuildLayer.parse_docker_login(args)
+        assert "ahab" == namespace.username
+        assert "CallMeIshmael" == namespace.password
+        assert "none" == namespace.email
+        assert "https://whitewhale.com/mobydick" == registry
+
