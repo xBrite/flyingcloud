@@ -25,7 +25,7 @@ python2.7-update:
 # needed to get the latest pip
 python-pip-bootstrap:
   cmd.run:
-    - name: curl https://bootstrap.pypa.io/get-pip.py | python
+    - name: curl https://bootstrap.pypa.io/get-pip.py | python && pip install pip==8.1.1
     - reload_modules: true
 
 python-virtualenv:
