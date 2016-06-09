@@ -11,7 +11,7 @@
   flyingcloud --no-push --no-pull opencv
   flyingcloud --no-push --no-pull app`
         ```
-    * If using the Docker for Mac beta:
+    * If using the Docker Mac beta:
         ```bash
     flyingcloud --no-use-docker-machine --no-push --no-pull sysbase
     flyingcloud --no-use-docker-machine --no-push --no-pull pybase
@@ -22,7 +22,7 @@
 
 # Demo steps
 
-* Demo the web app
+* Demo the web app (you will need to add `--no-use-docker-machine` if you are using the Docker Mac beta.)
     * `flyingcloud --run app`
 * use web browser to go to http://localhost:8080
 * Run tests with `flyingcloud --run testrunner`
