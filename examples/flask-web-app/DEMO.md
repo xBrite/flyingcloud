@@ -9,7 +9,7 @@
   flyingcloud --no-push --no-pull pybase
   flyingcloud --no-push --no-pull opencv
   flyingcloud --no-push --no-pull opencv
-  flyingcloud --no-push --no-pull app`
+  flyingcloud --no-push --no-pull app
 ```
     * If using the Docker Mac beta:
 ```bash
