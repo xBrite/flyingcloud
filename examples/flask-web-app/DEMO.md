@@ -24,7 +24,7 @@
 
 * Demo the web app (you will need to add `--no-use-docker-machine` if you are using the Docker Mac beta.)
     * `flyingcloud --run app`
-* use web browser to go to http://localhost:8080
+* use web browser to go to http://localhost:8080 or http://0.0.0.0:8080
 * Run tests with `flyingcloud --run testrunner`
     * `unit` (default)
     * use `-T acceptance`
