@@ -2,8 +2,8 @@
 
 # Preparation
 * Before the demo:
-    * clean out all Docker containers and images, except Phusion
-    * Rebuild:
+  * clean out all Docker containers and images, except Phusion
+  * Rebuild:
 ```bash
   flyingcloud --no-push --no-pull sysbase
   flyingcloud --no-push --no-pull pybase
@@ -11,7 +11,7 @@
   flyingcloud --no-push --no-pull opencv
   flyingcloud --no-push --no-pull app
 ```
-    * If using the Docker Mac beta:
+  * If using the Docker Mac beta:
 ```bash
     flyingcloud --no-use-docker-machine --no-push --no-pull sysbase
     flyingcloud --no-use-docker-machine --no-push --no-pull pybase
