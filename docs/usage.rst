@@ -34,13 +34,13 @@ Here's what the help will display if you have changed directories to
 ::
 
     $ flyingcloud --help
-
-    usage: main.py [-h] [--timeout TIMEOUT] [--no-pull] [--no-push] [--no-squash]
-                   [--retries RETRIES] [--debug] [--use-docker-machine]
-                   [--no-use-docker-machine]
-                   [--docker-machine-name DOCKER_MACHINE_NAME]
-                   [--build | --run | --kill]
-                   {testrunner,app,opencv,pybase,sysbase} ...
+    usage: flyingcloud [-h] [--timeout TIMEOUT] [--no-pull] [--no-push]
+                       [--no-squash] [--retries RETRIES] [--debug] [--env ENV_VAR]
+                       [--username USERNAME] [--password PASSWORD] [--email EMAIL]
+                       [--use-docker-machine] [--no-use-docker-machine]
+                       [--docker-machine-name DOCKER_MACHINE_NAME]
+                       [--build | --run | --kill]
+                       {testrunner,app,opencv,pybase,sysbase} ...
 
     Sample Flask App for FlyingCloud
 
@@ -55,6 +55,15 @@ Here's what the help will display if you have changed directories to
                             How often to retry remote Docker operations, such as
                             push/pull. Default: 3
       --debug, -D           Set terminal logging level to DEBUG, etc
+      --env ENV_VAR, -E ENV_VAR
+                            Set environment variables for --run. Use --env
+                            VAR1=value1 --env VAR2=value2 ...
+      --username USERNAME, -u USERNAME
+                            Username for Docker registry. Default: None
+      --password PASSWORD, -w PASSWORD
+                            Password for Docker registry. Default: None
+      --email EMAIL, -e EMAIL
+                            Email address for Docker registry. Default: None
       --use-docker-machine, -M
                             Use Docker Machine rather than Docker for Mac/Windows.
                             Default: True
@@ -112,6 +121,9 @@ Helpful to save time when developing.
 Do not use `docker-squash <https://github.com/jwilder/docker-squash>`_ to squash the layers,
 no matter what the layer configuration files say.
 Helpful to save time when developing.
+
+*Note*: docker-squash is `broken <https://github.com/jwilder/docker-squash/issues/45>`_
+with Docker 1.10+.
 
 ::
 
