@@ -666,6 +666,7 @@ class DockerBuildLayer(object):
 
     def parse_args(self, defaults, *layer_classes, **kwargs):
         parser = argparse.ArgumentParser(
+            prog='flyingcloud',
             description=kwargs.pop('description', "Build a Docker image using SaltStack"))
 
         defaults = defaults or {}
