@@ -157,7 +157,8 @@ class DockerBuildLayer(object):
         target_container_name = self.docker_create_container(
             namespace,
             self.container_name,
-            self.layer_latest_name)
+            self.layer_latest_name,
+            environment=namespace.env_vars)
         self.docker_start(namespace, target_container_name)
 
     def do_kill(self, namespace):
@@ -710,6 +711,9 @@ class DockerBuildLayer(object):
         parser.add_argument(
             '--debug', '-D', action='store_true',
             help="Set terminal logging level to DEBUG, etc")
+        parser.add_argument(
+            '--env', '-E', action='append', dest='env_vars', metavar='ENV_VAR',
+            help="Set environment variables for --run. Use --env VAR1=value1 --env VAR2=value2 ...")
         parser.add_argument(
             '--username', '-u',
             help="Username for Docker registry. Default: %(default)r")
