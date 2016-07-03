@@ -244,6 +244,7 @@ class DockerBuildLayer(object):
             self.docker_push(
                 namespace,
                 self.layer_latest_name)
+            self.update_docker_tags_json(namespace, layer_strong_name)
         else:
             namespace.logger.info("Not pushing Docker layers.")
 
@@ -622,6 +623,30 @@ class DockerBuildLayer(object):
         else:
             raise DockerResultError(give_up_message)
 
+    def update_docker_tags_json(self, namespace, layer_strong_name):
+        repo, tag = self.image_name2repo_tag(layer_strong_name)
+        docker_tags_data = {}
+        if os.path.exists(namespace.docker_tagsfile):
+            with open(namespace.docker_tagsfile, 'r') as fp:
+                docker_tags_data = json.load(fp)
+        repo_tags = docker_tags_data.setdefault(repo, [])
+        repo_tags.append(tag)
+        with open(namespace.docker_tagsfile, 'w') as fp:
+            json.dump(docker_tags_data, fp, indent=4)
+        namespace.logger.info("Wrote %s=%s to %s", repo, tag, namespace.docker_tagsfile)
+        return docker_tags_data
+
+    def get_latest_tag(self, namespace, image_name):
+        repo, _ = self.image_name2repo_tag(image_name)
+        tag = None
+        if os.path.exists(namespace.docker_tagsfile):
+            with open(namespace.docker_tagsfile, 'r') as fp:
+                docker_tags_data = json.load(fp)
+            repo_tags = docker_tags_data.get(repo)
+            tag = sorted(repo_tags , reverse=True)[0] if repo_tags else None
+        namespace.logger.info("get_latest_tag('%s') = '%s'", repo, tag)
+        return tag
+
     def docker_login(self, namespace, username, password, email=None, registry=None):
         if registry:
             if username and password:
@@ -673,6 +698,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('base_dir', os.path.abspath(os.path.dirname(__file__)))
         defaults.setdefault('salt_dir', os.path.join(defaults['base_dir'], "salt"))
         defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "flyingcloud.log"))
+        defaults.setdefault('docker_tagsfile', os.path.join(defaults['base_dir'], "docker_tags.json"))
         defaults.setdefault('timestamp_format', '%Y-%m-%dt%H%M%Sz')
         defaults.setdefault(
             'timestamp',
