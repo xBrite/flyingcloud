@@ -726,7 +726,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('password', os.environ.get(self.PASSWORD_ENV_VAR))
         defaults.setdefault('email', os.environ.get(self.EMAIL_ENV_VAR))
 
-        defaults.setdefault('use_docker_machine', True)
+        defaults.setdefault('use_docker_machine', False)  # Docker for Mac/Windows preferred
         defaults.setdefault('docker_machine_name',
                             os.environ.get('DOCKER_MACHINE_NAME', 'default'))
 
