@@ -244,6 +244,7 @@ class DockerBuildLayer(object):
             self.docker_push(
                 namespace,
                 self.layer_latest_name)
+            self.update_docker_tags_json(namespace, layer_strong_name)
         else:
             namespace.logger.info("Not pushing Docker layers.")
 
@@ -264,6 +265,8 @@ class DockerBuildLayer(object):
         namespace.logger.info(
             "Starting salt_highstate: source_image_name=%s, container_name=%s, salt_dir=%s",
             source_image_name, container_name, salt_dir)
+        error, commit = None, True
+
         try:
             target_container_name = self.docker_create_container(
                 namespace, container_name, source_image_name,
@@ -280,13 +283,23 @@ class DockerBuildLayer(object):
             duration = round(time.time() - start_time)
             namespace.logger.info(
                 "Finished Salting: duration=%d:%02d minutes", duration // 60, duration % 60)
+
             if self.salt_error(salt_output):
-                raise ExecError("salt_highstate failed.")
+                error = ExecError("salt_highstate failed.")
+                commit = namespace.commit_failed_builds
+                result_image_name += "_fail"
 
-            self.post_build(namespace, target_container_name, salt_dir)
+            if not error:
+                self.post_build(namespace, target_container_name, salt_dir)
 
-            result = self.docker_commit(namespace, target_container_name, result_image_name)
-            namespace.logger.info("Committed: %r", result)
+            if commit:
+                result = self.docker_commit(namespace, target_container_name, result_image_name)
+                namespace.logger.info("Committed %s: result=%r", result_image_name, result)
+
+            if error:
+                if commit and namespace.push_layer and self.registry_config['push_layer']:
+                    self.docker_push(namespace, result_image_name)
+                raise error
         except:
             namespace.logger.exception("Salting failed")
             raise
@@ -622,6 +635,30 @@ class DockerBuildLayer(object):
         else:
             raise DockerResultError(give_up_message)
 
+    def update_docker_tags_json(self, namespace, layer_strong_name):
+        repo, tag = self.image_name2repo_tag(layer_strong_name)
+        docker_tags_data = {}
+        if os.path.exists(namespace.docker_tagsfile):
+            with open(namespace.docker_tagsfile, 'r') as fp:
+                docker_tags_data = json.load(fp)
+        repo_tags = docker_tags_data.setdefault(repo, [])
+        repo_tags.append(tag)
+        with open(namespace.docker_tagsfile, 'w') as fp:
+            json.dump(docker_tags_data, fp, indent=4)
+        namespace.logger.info("Wrote %s=%s to %s", repo, tag, namespace.docker_tagsfile)
+        return docker_tags_data
+
+    def get_latest_tag(self, namespace, image_name):
+        repo, _ = self.image_name2repo_tag(image_name)
+        tag = None
+        if os.path.exists(namespace.docker_tagsfile):
+            with open(namespace.docker_tagsfile, 'r') as fp:
+                docker_tags_data = json.load(fp)
+            repo_tags = docker_tags_data.get(repo)
+            tag = sorted(repo_tags , reverse=True)[0] if repo_tags else None
+        namespace.logger.info("get_latest_tag('%s') = '%s'", repo, tag)
+        return tag
+
     def docker_login(self, namespace, username, password, email=None, registry=None):
         if registry:
             if username and password:
@@ -673,6 +710,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('base_dir', os.path.abspath(os.path.dirname(__file__)))
         defaults.setdefault('salt_dir', os.path.join(defaults['base_dir'], "salt"))
         defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "flyingcloud.log"))
+        defaults.setdefault('docker_tagsfile', os.path.join(defaults['base_dir'], "docker_tags.json"))
         defaults.setdefault('timestamp_format', '%Y-%m-%dt%H%M%Sz')
         defaults.setdefault(
             'timestamp',
@@ -688,7 +726,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('password', os.environ.get(self.PASSWORD_ENV_VAR))
         defaults.setdefault('email', os.environ.get(self.EMAIL_ENV_VAR))
 
-        defaults.setdefault('use_docker_machine', True)
+        defaults.setdefault('use_docker_machine', False)  # Docker for Mac/Windows preferred
         defaults.setdefault('docker_machine_name',
                             os.environ.get('DOCKER_MACHINE_NAME', 'default'))
 
@@ -710,6 +748,10 @@ class DockerBuildLayer(object):
             '--retries', '-R', type=int,
             help="How often to retry remote Docker operations, such as push/pull. "
                  "Default: %(default)d")
+        parser.add_argument(
+            '--commit-failed-builds', '-C', action='store_true',
+            help="Commit failed builds. Will also push to repository, if that's configured. "
+                 "This aids postmortem debugging.")
         parser.add_argument(
             '--debug', '-D', action='store_true',
             help="Set terminal logging level to DEBUG, etc")
