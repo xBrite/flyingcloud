@@ -265,6 +265,8 @@ class DockerBuildLayer(object):
         namespace.logger.info(
             "Starting salt_highstate: source_image_name=%s, container_name=%s, salt_dir=%s",
             source_image_name, container_name, salt_dir)
+        error, commit = None, True
+
         try:
             target_container_name = self.docker_create_container(
                 namespace, container_name, source_image_name,
@@ -281,13 +283,23 @@ class DockerBuildLayer(object):
             duration = round(time.time() - start_time)
             namespace.logger.info(
                 "Finished Salting: duration=%d:%02d minutes", duration // 60, duration % 60)
+
             if self.salt_error(salt_output):
-                raise ExecError("salt_highstate failed.")
+                error = ExecError("salt_highstate failed.")
+                commit = namespace.commit_failed_builds
+                result_image_name += "_fail"
 
-            self.post_build(namespace, target_container_name, salt_dir)
+            if not error:
+                self.post_build(namespace, target_container_name, salt_dir)
 
-            result = self.docker_commit(namespace, target_container_name, result_image_name)
-            namespace.logger.info("Committed: %r", result)
+            if commit:
+                result = self.docker_commit(namespace, target_container_name, result_image_name)
+                namespace.logger.info("Committed %s: result=%r", result_image_name, result)
+
+            if error:
+                if commit and namespace.push_layer and self.registry_config['push_layer']:
+                    self.docker_push(namespace, result_image_name)
+                raise error
         except:
             namespace.logger.exception("Salting failed")
             raise
@@ -736,6 +748,10 @@ class DockerBuildLayer(object):
             '--retries', '-R', type=int,
             help="How often to retry remote Docker operations, such as push/pull. "
                  "Default: %(default)d")
+        parser.add_argument(
+            '--commit-failed-builds', '-C', action='store_true',
+            help="Commit failed builds. Will also push to repository, if that's configured. "
+                 "This aids postmortem debugging.")
         parser.add_argument(
             '--debug', '-D', action='store_true',
             help="Set terminal logging level to DEBUG, etc")
