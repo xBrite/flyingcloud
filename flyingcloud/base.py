@@ -266,6 +266,7 @@ class DockerBuildLayer(object):
             "Starting salt_highstate: source_image_name=%s, container_name=%s, salt_dir=%s",
             source_image_name, container_name, salt_dir)
         error, commit = None, True
+        target_container_name = None
 
         try:
             target_container_name = self.docker_create_container(
@@ -304,7 +305,8 @@ class DockerBuildLayer(object):
             namespace.logger.exception("Salting failed")
             raise
         finally:
-            self.docker_cleanup(namespace, target_container_name)
+            if target_container_name:
+                self.docker_cleanup(namespace, target_container_name)
         return target_container_name
 
     def salt_states_exist(self, salt_dir):
@@ -438,10 +440,17 @@ class DockerBuildLayer(object):
         kwargs.update(self.docker_host_config(namespace, volume_map))
         namespace.logger.info("create_container: %r", kwargs)
 
-        container = namespace.docker.create_container(**kwargs)
-        container_id = container['Id']
-        namespace.logger.info("Created container %s, result=%r", container_id[:12], container)
-        return container_id
+        try:
+            container = namespace.docker.create_container(**kwargs)
+            container_id = container['Id']
+            namespace.logger.info("Created container %s, result=%r", container_id[:12], container)
+            return container_id
+        except docker.errors.APIError as e:
+            if e.response.status_code == 409:  # Conflict
+                # TODO: see if layer is already running
+                raise DockerResultError(
+                    "You probably need to run 'flyingcloud --kill': {}".format(e.message))
+            raise
 
     def docker_host_config(self, namespace, volume_map, mode='rw'):
         volumes, binds = [], []
