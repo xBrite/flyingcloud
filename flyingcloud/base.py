@@ -92,7 +92,8 @@ class DockerBuildLayer(object):
             container_name=None,
             exposed_ports=None,
             registry_config=None,
-            source_version_tag="latest"
+            source_version_tag="latest",
+            environment=None
     ):
         self.app_name = app_name
         self.layer_name = layer_name
@@ -100,6 +101,7 @@ class DockerBuildLayer(object):
         self.help = help
         self.description = description
         self.exposed_ports = exposed_ports or []
+        self.environment = environment
 
         config = self.RegistryConfig.copy()
         if registry_config:
@@ -159,8 +161,20 @@ class DockerBuildLayer(object):
             namespace,
             self.container_name,
             self.layer_latest_name,
-            environment=namespace.env_vars)
+            environment=self.make_environment(namespace.env_vars, self.environment))
         self.docker_start(namespace, target_container_name)
+
+    @classmethod
+    def make_environment(cls, env_var_list, env_config):
+        env = {}
+        for e in (env_config or []):
+            if isinstance(e, dict):
+                for k,v in e.items():
+                    env[k] = os.path.expandvars(v)
+        for e in (env_var_list or []):
+            k, v = tuple(e.split('=', 1))
+            env[k] = v
+        return env
 
     def do_kill(self, namespace):
         try:
