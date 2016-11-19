@@ -827,19 +827,21 @@ class DockerBuildLayer(object):
         namespace.logger = self.configure_logging(namespace)
         namespace.docker = self.docker_client(namespace, timeout=namespace.timeout)
 
-        if self.registry_config['aws_ecr_region']:
-            credentials_namespace, registry = self.ecr_get_login(
-                self.registry_config['aws_ecr_region'])
-        else:
-            registry = self.registry_config['host']
-            credentials_namespace = namespace
 
-        self.docker_login(
-            namespace,
-            username=credentials_namespace.username,
-            password=credentials_namespace.password,
-            email=credentials_namespace.email,
-            registry=registry)
+        if namespace.pull_layer or namespace.push_layer:
+            if self.registry_config['aws_ecr_region']:
+                    credentials_namespace, registry = self.ecr_get_login(
+                        self.registry_config['aws_ecr_region'])
+            else:
+                registry = self.registry_config['host']
+                credentials_namespace = namespace
+
+            self.docker_login(
+                namespace,
+                username=credentials_namespace.username,
+                password=credentials_namespace.password,
+                email=credentials_namespace.email,
+                registry=registry)
 
         self.add_additional_configuration(namespace)
 
