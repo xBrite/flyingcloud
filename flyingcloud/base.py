@@ -744,6 +744,7 @@ class DockerBuildLayer(object):
         parser.add_argument(
             '--timeout', '-t', type=int, default=self.DefaultTimeout,
             help="Docker client timeout in seconds. Default: %(default)s")
+        # TODO: pull_layer and push_layer should be disabled by default for --run and --kill
         parser.add_argument(
             '--no-pull', '-p', dest='pull_layer', action='store_false',
             help="Do not pull Docker image from repository")
@@ -826,7 +827,6 @@ class DockerBuildLayer(object):
 
         namespace.logger = self.configure_logging(namespace)
         namespace.docker = self.docker_client(namespace, timeout=namespace.timeout)
-
 
         if namespace.pull_layer or namespace.push_layer:
             if self.registry_config['aws_ecr_region']:
