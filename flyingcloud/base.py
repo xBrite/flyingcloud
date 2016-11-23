@@ -746,8 +746,14 @@ class DockerBuildLayer(object):
             help="Docker client timeout in seconds. Default: %(default)s")
         # TODO: pull_layer and push_layer should be disabled by default for --run and --kill
         parser.add_argument(
+            '--pull', dest='pull_layer', action='store_true',
+            help="Pull Docker image from repository")
+        parser.add_argument(
             '--no-pull', '-p', dest='pull_layer', action='store_false',
             help="Do not pull Docker image from repository")
+        parser.add_argument(
+            '--push', dest='push_layer', action='store_true',
+            help="Push Docker image to repository")
         parser.add_argument(
             '--no-push', '-P', dest='push_layer', action='store_false',
             help="Do not push Docker image to repository")
