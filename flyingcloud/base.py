@@ -23,7 +23,7 @@ import re
 import sh
 import time
 
-from .utils import disk_usage, abspath
+from .utils import disk_usage, abspath, hexdump
 
 STREAMING_CHUNK_SIZE = (1 << 20)
 
@@ -510,7 +510,12 @@ class DockerBuildLayer(object):
     def read_docker_output_stream(self, namespace, generator, logger_prefix):
         full_output = []
         for chunk in generator:
-            decoded_chunk = chunk.decode('utf-8')
+            try:
+                decoded_chunk = chunk.decode('utf-8')
+            except UnicodeDecodeError as e:
+                decoded_chunk = chunk.decode('utf-8', 'replace')
+                namespace.logger.debug("Couldn't decode %s", hexdump(chunk, 64))
+
             full_output.append(decoded_chunk)
             try:
                 data = json.loads(decoded_chunk)
@@ -877,7 +882,7 @@ class DockerBuildLayer(object):
         return namespace, namespace.registry
 
     def docker_client(self, namespace, *args, **kwargs):
-        namespace.logger.info("Platform is '%s'.", platform.system())
+        namespace.logger.debug("Platform is '%s'.", platform.system())
         kwargs.setdefault('timeout', self.DefaultTimeout)
         if self.registry_config['docker_api_version']:
             kwargs.setdefault('version', self.registry_config['docker_api_version'])
