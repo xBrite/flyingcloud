@@ -16,7 +16,7 @@ setup(
         'psutil',
         'pyyaml',
         'requests',
-        'sh',
+        'sh!=1.12',
         'six',
     ],
     setup_requires=[
