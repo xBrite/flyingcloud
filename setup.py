@@ -15,8 +15,8 @@ setup(
         'docker-py',
         'psutil',
         'pyyaml',
-        'requests',
-        'sh<1.12',
+        'requests!=2.12.2',
+        'sh>=1.12.2',
         'six',
     ],
     setup_requires=[
