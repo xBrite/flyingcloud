@@ -128,7 +128,7 @@ class DockerBuildLayer(object):
 
         self.initialize_build(namespace, salt_dir)
 
-        if self.PullLayer:
+        if namespace.pull_layer and self.PullLayer:
             self.docker_pull(namespace, self.source_image_name)
 
         container_name = self.salt_highstate(
@@ -505,6 +505,7 @@ class DockerBuildLayer(object):
         defaults.setdefault(
             'timestamp', datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
         defaults.setdefault('squash_layer', True)
+        defaults.setdefault('pull_layer', True)
         defaults.setdefault('push_layer', True)
         defaults.setdefault('retries', 3)
         defaults.setdefault('layer_cls', cls)
@@ -519,8 +520,17 @@ class DockerBuildLayer(object):
             '--no-squash', '-S', dest='squash_layer', action='store_false',
             help="Do not squash Docker layers")
         parser.add_argument(
+            '--pull', dest='pull_layer', action='store_true',
+            help="Pull Docker image from repository")
+        parser.add_argument(
+            '--no-pull', '-p', dest='pull_layer', action='store_false',
+            help="Do not pull Docker image from repository")
+        parser.add_argument(
+            '--push', dest='push_layer', action='store_true',
+            help="Push Docker image to repository")
+        parser.add_argument(
             '--no-push', '-P', dest='push_layer', action='store_false',
-            help="Do not push Docker layers")
+            help="Do not push Docker image to repository")
         parser.add_argument(
             '--retries', '-R', dest='retries', type=int,
             help="How often to retry remote Docker operations, such as push/pull. "
@@ -553,8 +563,10 @@ class DockerBuildLayer(object):
         namespace.username = os.environ[cls.USERNAME_VAR]
         namespace.password = os.environ[cls.PASSWORD_VAR]
         namespace.docker = cls.docker_client(namespace, timeout=namespace.timeout)
-        if cls.Registry:
-            cls.docker_login(namespace)
+
+        if namespace.pull_layer or namespace.push_layer:
+            if cls.Registry:
+                cls.docker_login(namespace)
 
         cls.add_additional_configuration(namespace)
 
