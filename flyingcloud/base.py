@@ -509,7 +509,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('push_layer', True)
         defaults.setdefault('retries', 3)
         defaults.setdefault('layer_cls', cls)
-        defaults.setdefault('use_docker_machine', True)
+        defaults.setdefault('use_docker_machine', False)
 
         parser.set_defaults(**defaults)
 
@@ -585,6 +585,7 @@ class DockerBuildLayer(object):
         if platform.system() == "Darwin":
             if namespace.use_docker_machine:
                 kwargs = cls.get_docker_machine_client(namespace, **kwargs)
+                namespace.logger.info("docker-machine: %r", kwargs)
             else:
                 namespace.logger.info("Not using docker-machine")
         return docker.Client(*args, **kwargs)
