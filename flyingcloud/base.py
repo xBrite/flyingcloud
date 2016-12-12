@@ -123,8 +123,8 @@ class DockerBuildLayer(object):
 
     def main(self, defaults, *layer_classes, **kwargs):
         self.check_user_is_root()
-        self.check_environment_variables()
         namespace = self.parse_args(defaults, *layer_classes, **kwargs)
+        self.check_environment_variables(namespace)
         self.do_operation(namespace)
 
     def repository_host(self, config):
@@ -142,12 +142,13 @@ class DockerBuildLayer(object):
         if platform.system() == "Linux" and os.geteuid() != 0 :
             raise NotSudoError("You must be root (use sudo)")
 
-    def check_environment_variables(self):
+    def check_environment_variables(self, namespace):
         cfg = self.registry_config
         if cfg['host'] and cfg['login_required'] and not cfg['aws_ecr_region']:
-            for v in [self.USERNAME_ENV_VAR, self.PASSWORD_ENV_VAR]:
-                if v not in os.environ:
-                    raise EnvironmentVarError("Environment variable {} not defined".format(v))
+            if namespace.pull_layer or namespace.push_layer:
+                for v in [self.USERNAME_ENV_VAR, self.PASSWORD_ENV_VAR]:
+                    if v not in os.environ:
+                        raise EnvironmentVarError("Environment variable {} not defined".format(v))
 
     def do_operation(self, namespace):
         method = getattr(self, 'do_' + namespace.operation)

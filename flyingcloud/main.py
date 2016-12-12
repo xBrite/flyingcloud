@@ -103,11 +103,11 @@ def main():
 
     if layers is not None:
         instance = layers[0]
-        instance.check_environment_variables()
         namespace = instance.parse_args(
             defaults,
             *layers,
             description=project_info['description'])
+        instance.check_environment_variables(namespace)
 
         instance = namespace.layer_inst
         instance.do_operation(namespace)
