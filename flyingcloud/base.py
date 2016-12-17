@@ -303,6 +303,7 @@ class DockerBuildLayer(object):
         try:
             target_container_name = self.docker_create_container(
                 namespace, container_name, source_image_name,
+                environment=self.make_environment(namespace.env_vars, self.environment),
                 volume_map={salt_dir: "/srv/salt"})
 
             self.docker_start(namespace, target_container_name)
@@ -469,6 +470,7 @@ class DockerBuildLayer(object):
             environment=None, detach=True, volume_map=None, **kwargs):
         namespace.logger.info("Creating container '%s' from image %s",
                               container_name, image_name)
+        namespace.logger.debug("Environment: %r", environment)
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, self.docker_tags_for_image(namespace, image_name))
