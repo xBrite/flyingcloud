@@ -92,7 +92,8 @@ class DockerBuildLayer(object):
             container_name=None,
             exposed_ports=None,
             registry_config=None,
-            source_version_tag="latest"
+            source_version_tag="latest",
+            environment=None
     ):
         self.app_name = app_name
         self.layer_name = layer_name
@@ -100,6 +101,7 @@ class DockerBuildLayer(object):
         self.help = help
         self.description = description
         self.exposed_ports = exposed_ports or []
+        self.environment = environment
 
         config = self.RegistryConfig.copy()
         if registry_config:
@@ -160,8 +162,37 @@ class DockerBuildLayer(object):
             namespace,
             self.container_name,
             self.layer_latest_name,
-            environment=namespace.env_vars)
+            environment=self.make_environment(namespace.env_vars, self.environment))
         self.docker_start(namespace, target_container_name)
+
+    @classmethod
+    def make_environment(cls, env_var_list, env_config):
+        """
+        Build a Docker environment block from YAML config, --env command-line params, and os.environ.
+
+        :param env_var_list: ["VAR1=value1", "VAR2=value2", ...]
+        :param env_config: dict(VAR1="$SOME_VALUE", VAR2="${OTHER_VALUE}", VAR3="literal")
+        :return:
+        """
+        env = {}
+        for e in (env_config or []):
+            if isinstance(e, dict):
+                # Handle:
+                #   environment:
+                #     - AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+                #     - AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                for k,v in e.items():
+                    env[k] = os.path.expandvars(v)
+            else:
+                # Handle:
+                #   environment:
+                #     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+                #     AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                env[e] = os.path.expandvars(env_config[e])
+        for e in (env_var_list or []):
+            k, v = tuple(e.split('=', 1))
+            env[k] = v
+        return env
 
     def do_kill(self, namespace):
         try:
@@ -272,6 +303,7 @@ class DockerBuildLayer(object):
         try:
             target_container_name = self.docker_create_container(
                 namespace, container_name, source_image_name,
+                environment=self.make_environment(namespace.env_vars, self.environment),
                 volume_map={salt_dir: "/srv/salt"})
 
             self.docker_start(namespace, target_container_name)
@@ -342,6 +374,10 @@ class DockerBuildLayer(object):
                 container_ports = list(p.values())[0]
                 if not isinstance(container_ports, list):
                     container_ports = [container_ports]
+            elif isinstance(exposed_ports, dict):
+                container_ports = exposed_ports[p]
+                if not isinstance(container_ports, (list, tuple)):
+                    container_ports = [container_ports]
             else:
                 container_ports = [p]
             ports.extend(int(cp) for cp in container_ports)
@@ -366,6 +402,11 @@ class DockerBuildLayer(object):
             if isinstance(p, dict):
                 host_port, container_ports = list(p.items())[0]
                 if not isinstance(container_ports, list):
+                    container_ports = [container_ports]
+            elif isinstance(exposed_ports, dict):
+                host_port = p
+                container_ports = exposed_ports[p]
+                if not isinstance(container_ports, (list, tuple)):
                     container_ports = [container_ports]
             else:
                 host_port = p
@@ -429,6 +470,7 @@ class DockerBuildLayer(object):
             environment=None, detach=True, volume_map=None, **kwargs):
         namespace.logger.info("Creating container '%s' from image %s",
                               container_name, image_name)
+        namespace.logger.debug("Environment: %r", environment)
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, self.docker_tags_for_image(namespace, image_name))

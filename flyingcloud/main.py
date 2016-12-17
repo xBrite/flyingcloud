@@ -28,6 +28,7 @@ def get_layer(app_name, layer_name, layer_data, registry_config):
     description = layer_info.get('description')
     exposed_ports = layer_info.get('exposed_ports')
     container_name = layer_info.get('image_name')
+    environment = layer_info.get('environment')
 
     layer = layer_class(
         app_name=app_name,
@@ -38,6 +39,7 @@ def get_layer(app_name, layer_name, layer_data, registry_config):
         container_name=container_name,
         exposed_ports=exposed_ports,
         registry_config=registry_config,
+        environment=environment,
     )
 
 #   print(layer.__dict__)
