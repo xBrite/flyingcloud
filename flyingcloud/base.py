@@ -167,11 +167,28 @@ class DockerBuildLayer(object):
 
     @classmethod
     def make_environment(cls, env_var_list, env_config):
+        """
+        Build a Docker environment block from YAML config, --env command-line params, and os.environ.
+
+        :param env_var_list: ["VAR1=value1", "VAR2=value2", ...]
+        :param env_config: dict(VAR1="$SOME_VALUE", VAR2="${OTHER_VALUE}", VAR3="literal")
+        :return:
+        """
         env = {}
         for e in (env_config or []):
             if isinstance(e, dict):
+                # Handle:
+                #   environment:
+                #     - AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+                #     - AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
                 for k,v in e.items():
                     env[k] = os.path.expandvars(v)
+            else:
+                # Handle:
+                #   environment:
+                #     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+                #     AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                env[e] = os.path.expandvars(env_config[e])
         for e in (env_var_list or []):
             k, v = tuple(e.split('=', 1))
             env[k] = v
