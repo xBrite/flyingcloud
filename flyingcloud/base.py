@@ -373,6 +373,10 @@ class DockerBuildLayer(object):
                 container_ports = list(p.values())[0]
                 if not isinstance(container_ports, list):
                     container_ports = [container_ports]
+            elif isinstance(exposed_ports, dict):
+                container_ports = exposed_ports[p]
+                if not isinstance(container_ports, (list, tuple)):
+                    container_ports = [container_ports]
             else:
                 container_ports = [p]
             ports.extend(int(cp) for cp in container_ports)
@@ -397,6 +401,11 @@ class DockerBuildLayer(object):
             if isinstance(p, dict):
                 host_port, container_ports = list(p.items())[0]
                 if not isinstance(container_ports, list):
+                    container_ports = [container_ports]
+            elif isinstance(exposed_ports, dict):
+                host_port = p
+                container_ports = exposed_ports[p]
+                if not isinstance(container_ports, (list, tuple)):
                     container_ports = [container_ports]
             else:
                 host_port = p
