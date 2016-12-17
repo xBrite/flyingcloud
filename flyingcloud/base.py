@@ -23,7 +23,7 @@ import re
 import sh
 import time
 
-from .utils import disk_usage, abspath
+from .utils import disk_usage, abspath, hexdump
 
 STREAMING_CHUNK_SIZE = (1 << 20)
 
@@ -114,7 +114,7 @@ class DockerBuildLayer(object):
         self.docker_layer_name = "{}{}".format(host_org, self.container_name)
         self.layer_latest_name = "{}:latest".format(self.docker_layer_name)
 
-        if source_image_base_name:
+        if self.source_image_base_name:
             self.source_image_name = "{}{}:{}".format(
                 host_org, self.source_image_base_name, source_version_tag)
         else:
@@ -125,8 +125,8 @@ class DockerBuildLayer(object):
 
     def main(self, defaults, *layer_classes, **kwargs):
         self.check_user_is_root()
-        self.check_environment_variables()
         namespace = self.parse_args(defaults, *layer_classes, **kwargs)
+        self.check_environment_variables(namespace)
         self.do_operation(namespace)
 
     def repository_host(self, config):
@@ -144,12 +144,13 @@ class DockerBuildLayer(object):
         if platform.system() == "Linux" and os.geteuid() != 0 :
             raise NotSudoError("You must be root (use sudo)")
 
-    def check_environment_variables(self):
+    def check_environment_variables(self, namespace):
         cfg = self.registry_config
         if cfg['host'] and cfg['login_required'] and not cfg['aws_ecr_region']:
-            for v in [self.USERNAME_ENV_VAR, self.PASSWORD_ENV_VAR]:
-                if v not in os.environ:
-                    raise EnvironmentVarError("Environment variable {} not defined".format(v))
+            if namespace.pull_layer or namespace.push_layer:
+                for v in [self.USERNAME_ENV_VAR, self.PASSWORD_ENV_VAR]:
+                    if v not in os.environ:
+                        raise EnvironmentVarError("Environment variable {} not defined".format(v))
 
     def do_operation(self, namespace):
         method = getattr(self, 'do_' + namespace.operation)
@@ -524,7 +525,12 @@ class DockerBuildLayer(object):
     def read_docker_output_stream(self, namespace, generator, logger_prefix):
         full_output = []
         for chunk in generator:
-            decoded_chunk = chunk.decode('utf-8')
+            try:
+                decoded_chunk = chunk.decode('utf-8')
+            except UnicodeDecodeError as e:
+                decoded_chunk = chunk.decode('utf-8', 'replace')
+                namespace.logger.debug("Couldn't decode %s", hexdump(chunk, 64))
+
             full_output.append(decoded_chunk)
             try:
                 data = json.loads(decoded_chunk)
@@ -758,9 +764,16 @@ class DockerBuildLayer(object):
         parser.add_argument(
             '--timeout', '-t', type=int, default=self.DefaultTimeout,
             help="Docker client timeout in seconds. Default: %(default)s")
+        # TODO: pull_layer and push_layer should be disabled by default for --run and --kill
+        parser.add_argument(
+            '--pull', dest='pull_layer', action='store_true',
+            help="Pull Docker image from repository")
         parser.add_argument(
             '--no-pull', '-p', dest='pull_layer', action='store_false',
             help="Do not pull Docker image from repository")
+        parser.add_argument(
+            '--push', dest='push_layer', action='store_true',
+            help="Push Docker image to repository")
         parser.add_argument(
             '--no-push', '-P', dest='push_layer', action='store_false',
             help="Do not push Docker image to repository")
@@ -841,19 +854,20 @@ class DockerBuildLayer(object):
         namespace.logger = self.configure_logging(namespace)
         namespace.docker = self.docker_client(namespace, timeout=namespace.timeout)
 
-        if self.registry_config['aws_ecr_region']:
-            credentials_namespace, registry = self.ecr_get_login(
-                self.registry_config['aws_ecr_region'])
-        else:
-            registry = self.registry_config['host']
-            credentials_namespace = namespace
+        if namespace.pull_layer or namespace.push_layer:
+            if self.registry_config['aws_ecr_region']:
+                    credentials_namespace, registry = self.ecr_get_login(
+                        self.registry_config['aws_ecr_region'])
+            else:
+                registry = self.registry_config['host']
+                credentials_namespace = namespace
 
-        self.docker_login(
-            namespace,
-            username=credentials_namespace.username,
-            password=credentials_namespace.password,
-            email=credentials_namespace.email,
-            registry=registry)
+            self.docker_login(
+                namespace,
+                username=credentials_namespace.username,
+                password=credentials_namespace.password,
+                email=credentials_namespace.email,
+                registry=registry)
 
         self.add_additional_configuration(namespace)
 
@@ -883,7 +897,7 @@ class DockerBuildLayer(object):
         return namespace, namespace.registry
 
     def docker_client(self, namespace, *args, **kwargs):
-        namespace.logger.info("Platform is '%s'.", platform.system())
+        namespace.logger.debug("Platform is '%s'.", platform.system())
         kwargs.setdefault('timeout', self.DefaultTimeout)
         if self.registry_config['docker_api_version']:
             kwargs.setdefault('version', self.registry_config['docker_api_version'])

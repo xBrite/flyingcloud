@@ -13,7 +13,8 @@ from .utils import import_derived_class
 
 def get_layer(app_name, layer_name, layer_data, registry_config):
     layer_info, layer_path = layer_data["info"], layer_data["path"]
-    python_layer_filename = os.path.join(layer_path, "layer.py")
+    python_layer_filename = os.path.join(
+        layer_path, layer_info.get("code", "layer.py"))
     if os.path.exists(python_layer_filename):
         layer_class = import_derived_class(python_layer_filename, DockerBuildLayer)
     else:
@@ -104,11 +105,11 @@ def main():
 
     if layers is not None:
         instance = layers[0]
-        instance.check_environment_variables()
         namespace = instance.parse_args(
             defaults,
             *layers,
             description=project_info['description'])
+        instance.check_environment_variables(namespace)
 
         instance = namespace.layer_inst
         instance.do_operation(namespace)

@@ -8,3 +8,4 @@ from .archive import make_tarfile, make_zipfile, zip_add_directory, zip_write_di
 from .vcs import find_vcs
 from .package_build import build_package
 from .importer import import_derived_class
+from .misc import hexdump

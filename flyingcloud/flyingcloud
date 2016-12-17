@@ -5,15 +5,16 @@ if [ -z "$VIRTUAL_ENV" ]; then
     exit 1
 fi
 
-if [ "$(uname)" == "Darwin" ]; then
+if [ "$(uname)" = "Darwin" ]; then
     $VIRTUAL_ENV/bin/python -m flyingcloud.main $@
-elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
-    declare -a envvars=( \
-        FLYINGCLOUD_DOCKER_REGISTRY_USERNAME \
-        FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD \
-        VIRTUAL_ENV \
-        TMPDIR \
-        AWS_ACCESS_KEY_ID \
+elif [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
+    # TODO: figure out mechanism to configure other environment variables
+    declare -a envvars=(
+        FLYINGCLOUD_DOCKER_REGISTRY_USERNAME
+        FLYINGCLOUD_DOCKER_REGISTRY_PASSWORD
+        VIRTUAL_ENV
+        TMPDIR
+        AWS_ACCESS_KEY_ID
         AWS_SECRET_ACCESS_KEY
     )
     argv=()
@@ -23,5 +24,7 @@ elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
         argv+=("$ev=$value")
     done
 
+    # TODO: don't use sudo if the current user is a member of the docker group
+    # https://docs.docker.com/engine/installation/linux/ubuntulinux/#/manage-docker-as-a-non-root-user
     sudo ${argv[@]} $VIRTUAL_ENV/bin/python -m flyingcloud.main $@
 fi
