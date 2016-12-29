@@ -98,18 +98,24 @@ def parse_args(args=None, namespace=None, defaults=None):
     namespace.package_path = abspath(namespace.package_path)
     namespace.vcs = find_vcs(namespace.package_path)
     namespace.version_data = build_version_data(
-        namespace.vcs, namespace.build_date, namespace.build_number, namespace.branch_name)
+        namespace.vcs,
+        namespace.build_date,
+        namespace.build_number,
+        namespace.branch_name,
+        namespace.sha)
     namespace.version_label = namespace.version_format.format(**namespace.version_data)
     namespace.zipfile_name = '{prefix}-{version_label}.zip'.format(**namespace.__dict__)
     return namespace
 
 
-def build_version_data(vcs, build_date, build_number, branch_name=None):
+def build_version_data(vcs, build_date, build_number, branch_name=None, sha=None):
     return dict(
         build_date=build_date,
+        # TODO: support other environment variable names
         branch_name=(branch_name or (vcs.current_branch() if vcs else os.getenv(
             "bamboo_repository_branch_name", "unknown"))).replace('/', '-'),
-        sha=(vcs.sha() if vcs else os.getenv("bamboo_repository_revision_number", "unknown"))[:7],
+        sha=(sha or (vcs.sha() if vcs else os.getenv(
+            "bamboo_repository_revision_number", "unknown")))[:7],
         build_number=build_number,
     )
 
