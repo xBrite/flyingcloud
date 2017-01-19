@@ -3,3 +3,4 @@ description: >
   Flask Example App Test Runner, which runs
   unit and acceptance tests inside the Docker container.
 parent: app
+code: testrunner_layer.py
