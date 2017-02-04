@@ -772,7 +772,6 @@ class DockerBuildLayer(object):
         defaults.setdefault(
             'timestamp',
             datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
-        defaults.setdefault('layer_inst', self)
         defaults.setdefault('operation', 'build')
 
         defaults.setdefault('pull_layer', True)
