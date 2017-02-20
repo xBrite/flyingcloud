@@ -1,0 +1,5 @@
+app_name: 'nginx_example'
+description: 'Nginx Example'
+layers:
+  - nginx
+pillar: 'dev'

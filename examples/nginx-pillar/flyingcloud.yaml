@@ -1,0 +1,8 @@
+app_name: 'nginx_pillar'
+description: 'Sample Nginx App With Pillar Support'
+layers:
+  - nginx
+pillars:
+  - dev
+  - qa    
+

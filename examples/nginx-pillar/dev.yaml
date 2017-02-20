@@ -1,5 +1,0 @@
-app_name: 'dev_example'
-description: 'Dev Example'
-layers:
-  - nginx
-pillar: 'dev'

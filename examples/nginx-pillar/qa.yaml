@@ -1,5 +1,0 @@
-app_name: 'qa_example'
-description: 'QA Example'
-layers:
-  - nginx
-pillar: 'qa'
