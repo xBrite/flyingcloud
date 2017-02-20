@@ -1,0 +1,11 @@
+upstream backend {
+    server {{ env.backend_server }};
+}
+
+server {
+        listen   80;
+        server_name   {{ env.server_name }};
+        root /var/www;
+
+        access_log  /var/log/nginx/{{ env.log_prefix }}_http.log;
+}
