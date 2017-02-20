@@ -1,7 +1,5 @@
-app_name: 'example'
-description: 'Example'
+app_name: 'dev_example'
+description: 'Dev Example'
 layers:
   - nginx
-
-pillar:
-  - dev
+pillar: 'dev'

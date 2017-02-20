@@ -1,7 +1,5 @@
-app_name: 'example'
-description: 'Example'
+app_name: 'qa_example'
+description: 'QA Example'
 layers:
   - nginx
-
-pillar:
-  - qa
+pillar: 'qa'
