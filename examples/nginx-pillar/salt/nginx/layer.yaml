@@ -1,5 +1,6 @@
-app_name: 'nginx_example'
-description: 'Nginx Example'
-layers:
-  - nginx
-pillar: 'dev'
+help: nginx layer
+description: >
+  Nginx layer
+parent: None
+pillar: dev
+
