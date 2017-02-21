@@ -1,8 +1,18 @@
 app_name: 'nginx_pillar'
 description: 'Sample Nginx App With Pillar Support'
 layers:
+  - sysbase
   - nginx
 pillars:
   - dev
   - qa    
+
+registry:
+  host: quay.io
+  organization: cookbrite
+  docker_api_version: "1.17"
+  login_required: false
+  pull_layer: false
+  push_layer: false
+  squash_layer: false
 

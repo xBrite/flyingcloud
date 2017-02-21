@@ -1,6 +1,6 @@
 help: nginx layer
 description: >
   Nginx layer
-parent: None
+parent: sysbase
 pillar: dev
 
