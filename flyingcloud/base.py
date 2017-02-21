@@ -94,7 +94,7 @@ class DockerBuildLayer(object):
             registry_config=None,
             source_version_tag="latest",
             environment=None,
-            pillar=None
+            pillar=None,
     ):
         self.app_name = app_name
         self.layer_name = layer_name
@@ -103,7 +103,9 @@ class DockerBuildLayer(object):
         self.description = description
         self.exposed_ports = exposed_ports or []
         self.environment = environment
-        self.pillar = None
+        self.pillar = pillar
+        self.base_dir = None
+        self.pillar_dir = None
 
         config = self.RegistryConfig.copy()
         if registry_config:
@@ -147,9 +149,13 @@ class DockerBuildLayer(object):
             raise NotSudoError("You must be root (use sudo)")
 
     def set_pillar(self, namespace):
-        pillar = namespace.pillar
+        pillar = namespace.pillar or self.pillar
+        self.base_dir = namespace.base_dir
         if pillar:
             self.pillar = pillar
+            pillar_basedir = os.path.join(self.base_dir, 'pillar')
+            self.pillar_dir = os.path.join(pillar_basedir, self.pillar)
+            namespace.logger.info("Using pillar '{}' and setting pillar_dir to '{}'.".format(self.pillar, self.pillar_dir))
 
     def check_environment_variables(self, namespace):
         cfg = self.registry_config
@@ -310,13 +316,13 @@ class DockerBuildLayer(object):
         volume_map = {
             salt_dir: "/srv/salt",
         }
-        if namespace.pillar_dir:
-            volume_map[namespace.pillar_dir] = "/srv/pillar"
+        if self.pillar_dir:
+            volume_map[self.pillar_dir] = "/srv/pillar"
         try:
             target_container_name = self.docker_create_container(
                 namespace, container_name, source_image_name,
                 environment=self.make_environment(namespace.env_vars, self.environment),
-                volume_map=volume_map,
+                volume_map=volume_map
             )
 
             self.docker_start(namespace, target_container_name)
@@ -917,10 +923,7 @@ class DockerBuildLayer(object):
 
         self.add_additional_configuration(namespace)
 
-        if namespace.pillar:
-            pillar_basedir = os.path.join(defaults['base_dir'], "pillar")
-            namespace.pillar_dir = os.path.join(pillar_basedir, namespace.pillar)
-
+        namespace.base_dir = defaults['base_dir']
         return namespace
 
     @classmethod

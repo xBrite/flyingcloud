@@ -113,7 +113,8 @@ def main():
             description=project_info['description']
         )
         instance.check_environment_variables(namespace)
-        instance.set_pillar(namespace)
+        for layer in layers:
+            layer.set_pillar(namespace)
 
         instance = namespace.layer_inst
         instance.do_operation(namespace)
