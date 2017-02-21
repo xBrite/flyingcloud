@@ -93,7 +93,8 @@ class DockerBuildLayer(object):
             exposed_ports=None,
             registry_config=None,
             source_version_tag="latest",
-            environment=None
+            environment=None,
+            pillar=None
     ):
         self.app_name = app_name
         self.layer_name = layer_name
@@ -102,6 +103,7 @@ class DockerBuildLayer(object):
         self.description = description
         self.exposed_ports = exposed_ports or []
         self.environment = environment
+        self.pillar = None
 
         config = self.RegistryConfig.copy()
         if registry_config:
@@ -143,6 +145,11 @@ class DockerBuildLayer(object):
     def check_user_is_root(cls):
         if platform.system() == "Linux" and os.geteuid() != 0 :
             raise NotSudoError("You must be root (use sudo)")
+
+    def set_pillar(self, namespace):
+        pillar = namespace.pillar
+        if pillar:
+            self.pillar = pillar
 
     def check_environment_variables(self, namespace):
         cfg = self.registry_config
@@ -300,11 +307,17 @@ class DockerBuildLayer(object):
         error, commit = None, True
         target_container_name = None
 
+        volume_map = {
+            salt_dir: "/srv/salt",
+        }
+        if namespace.pillar_dir:
+            volume_map[namespace.pillar_dir] = "/srv/pillar"
         try:
             target_container_name = self.docker_create_container(
                 namespace, container_name, source_image_name,
                 environment=self.make_environment(namespace.env_vars, self.environment),
-                volume_map={salt_dir: "/srv/salt"})
+                volume_map=volume_map,
+            )
 
             self.docker_start(namespace, target_container_name)
 
@@ -766,6 +779,8 @@ class DockerBuildLayer(object):
         defaults = defaults or {}
         defaults.setdefault('base_dir', os.path.abspath(os.path.dirname(__file__)))
         defaults.setdefault('salt_dir', os.path.join(defaults['base_dir'], "salt"))
+        defaults.setdefault('pillar_dir', None)
+        defaults.setdefault('pillar', None)
         defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "flyingcloud.log"))
         defaults.setdefault('docker_tagsfile', os.path.join(defaults['base_dir'], "docker_tags.json"))
         defaults.setdefault('timestamp_format', '%Y-%m-%dt%H%M%Sz')
@@ -831,6 +846,10 @@ class DockerBuildLayer(object):
         parser.add_argument(
             '--email', '-e',
             help="Email address for Docker registry. Default: %(default)r")
+        parser.add_argument(
+            '--pillar', '-l', dest='pillar', type=str,
+            help="Specify pillar to use for this layer. Default: %(default)r")
+
 
         if self.docker_machine_platform():
             parser.add_argument(
@@ -897,6 +916,10 @@ class DockerBuildLayer(object):
                 registry=registry)
 
         self.add_additional_configuration(namespace)
+
+        if namespace.pillar:
+            pillar_basedir = os.path.join(defaults['base_dir'], "pillar")
+            namespace.pillar_dir = os.path.join(pillar_basedir, namespace.pillar)
 
         return namespace
 

@@ -29,6 +29,7 @@ def get_layer(app_name, layer_name, layer_data, registry_config):
     exposed_ports = layer_info.get('exposed_ports')
     container_name = layer_info.get('image_name')
     environment = layer_info.get('environment')
+    pillar = layer_info.get('pillar')
 
     layer = layer_class(
         app_name=app_name,
@@ -40,6 +41,7 @@ def get_layer(app_name, layer_name, layer_data, registry_config):
         exposed_ports=exposed_ports,
         registry_config=registry_config,
         environment=environment,
+        pillar=pillar,
     )
 
 #   print(layer.__dict__)
@@ -108,8 +110,10 @@ def main():
         namespace = instance.parse_args(
             defaults,
             *layers,
-            description=project_info['description'])
+            description=project_info['description']
+        )
         instance.check_environment_variables(namespace)
+        instance.set_pillar(namespace)
 
         instance = namespace.layer_inst
         instance.do_operation(namespace)
