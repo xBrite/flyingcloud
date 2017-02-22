@@ -116,6 +116,8 @@ class DockerBuildLayer(object):
 
         self.container_name = container_name or "{}_{}".format(self.app_name, self.layer_name)
         self.docker_layer_name = "{}{}".format(host_org, self.container_name)
+        if self.pillar:
+            self.docker_layer_name = "{}_{}".format(self.docker_layer_name, self.pillar)
         self.layer_latest_name = "{}:latest".format(self.docker_layer_name)
 
         if self.source_image_base_name:
