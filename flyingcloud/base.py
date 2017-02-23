@@ -116,8 +116,6 @@ class DockerBuildLayer(object):
 
         self.container_name = container_name or "{}_{}".format(self.app_name, self.layer_name)
         self.docker_layer_name = "{}{}".format(host_org, self.container_name)
-        if self.pillar:
-            self.docker_layer_name = "{}_{}".format(self.docker_layer_name, self.pillar)
         self.layer_latest_name = "{}:latest".format(self.docker_layer_name)
 
         if self.source_image_base_name:
@@ -157,6 +155,7 @@ class DockerBuildLayer(object):
             self.pillar = pillar
             pillar_basedir = os.path.join(self.base_dir, 'pillar')
             self.pillar_dir = os.path.join(pillar_basedir, self.pillar)
+            self.docker_layer_name = "{}_{}".format(self.docker_layer_name, pillar)
             namespace.logger.info("Using pillar '{}' and setting pillar_dir to '{}'.".format(self.pillar, self.pillar_dir))
 
     def check_environment_variables(self, namespace):
@@ -247,6 +246,7 @@ class DockerBuildLayer(object):
         self.layer_squashed_name = "{}-sq".format(self.layer_timestamp_name)
 
         self.initialize_build(namespace, salt_dir)
+        namespace.logger.info("Building docker layer '{}' with tag '{}'.".format(self.layer_name, self.docker_layer_name))
 
         if (namespace.pull_layer
                 and self.registry_config['pull_layer']
