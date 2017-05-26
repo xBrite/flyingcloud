@@ -685,7 +685,7 @@ class DockerBuildLayer(object):
                 generator = method(repository=repo, tag=tag, stream=True)
                 return self.read_docker_output_stream(
                     namespace, generator, "docker_{}".format(verb))
-            except DockerResultError:
+            except (DockerResultError, docker.errors.DockerException, docker.errors.APIError):
                 if attempt == namespace.retries:
                     namespace.logger.info("%s", give_up_message)
                     raise
