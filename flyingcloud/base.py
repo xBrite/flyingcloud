@@ -455,13 +455,16 @@ class DockerBuildLayer(object):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
         if dockerfile:
             dockerfile = os.path.relpath(dockerfile, namespace.base_dir)
+        image_id = None
         for line in namespace.docker.build(tag=tag, path=namespace.base_dir,
                                            dockerfile=dockerfile, fileobj=fileobj):
             line = line.decode('utf-8').rstrip('\r\n')
             namespace.logger.debug("%s", line)
-        # Grrr! Why doesn't docker-py handle this for us?
-        match = re.search(r'Successfully built ([0-9a-f]+)', line)
-        image_id = match and match.group(1)
+            if not image_id:
+                match = re.search(r'Successfully built ([0-9a-f]+)', line)
+                # Grrr! Why doesn't docker-py handle this for us?
+                image_id = match and match.group(1)
+
         namespace.logger.info("Built tag=%s, image_id=%s", tag, image_id)
         return image_id
 
