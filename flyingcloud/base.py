@@ -723,13 +723,12 @@ class DockerBuildLayer(object):
         if registry:
             if username and password:
                 namespace.logger.info(
-                    "Logging in to registry=%r, username=%r, email=%r, password=%r",
-                    registry, username, email, self.elide_password(password))
-                return namespace.docker.login(
-                    username=username,
-                    password=password,
-                    email=email,
-                    registry=registry)
+                    "Logging in to registry=%r, username=%r, password=%r, email=%r",
+                    registry, username, self.elide_password(password), email)
+                kwargs = dict(username=username, password=password, registry=registry)
+                if email is not None:
+                    kwargs['email'] = email
+                return namespace.docker.login(**kwargs)
             elif self.registry_config['login_required']:
                 assert username, "No username"
                 assert password, "No password"
@@ -908,12 +907,22 @@ class DockerBuildLayer(object):
         """Override"""
         pass
 
-    def ecr_get_login(self, aws_ecr_region):
-        aws_cli = os.path.join(os.getenv("VIRTUAL_ENV"), "bin", "aws")
+    def ecr_get_login(self, namespace, aws_ecr_region):
+        aws_cli_path = os.path.join(os.getenv("VIRTUAL_ENV"), "bin", "aws")
+        command = ["ecr", "get-login", "--region", aws_ecr_region]
+
+        # As of Docker 17.06, --email is no longer accepted for docker login
+        # https://github.com/aws/aws-cli/issues/1926
+        import awscli
+        from distutils.version import LooseVersion
+        if LooseVersion(awscli.__version__) >= LooseVersion("1.11.91"):
+            command += ["--no-include-email"]
+
         with io.BytesIO() as output:
-            sh.Command(aws_cli)("ecr", "get-login", "--region", aws_ecr_region, _out=output)
-            docker_login = output.getvalue()
-        return self.parse_docker_login(docker_login.split())
+            namespace.logger.info("Running: %r", command)
+            sh.Command(aws_cli_path)(*command, _out=output)
+            docker_login_cmdline = output.getvalue()
+        return self.parse_docker_login(docker_login_cmdline.split())
 
     @classmethod
     def parse_docker_login(cls, args):
