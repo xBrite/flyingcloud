@@ -27,6 +27,7 @@ def get_layer(app_name, layer_name, layer_data, registry_config):
         raise FlyingCloudError("layer %s is missing a Help string." % layer_name)
     description = layer_info.get('description')
     exposed_ports = layer_info.get('exposed_ports')
+    pull_images = layer_info.get('pull_images')
     container_name = layer_info.get('image_name')
     environment = layer_info.get('environment')
 
@@ -38,6 +39,7 @@ def get_layer(app_name, layer_name, layer_data, registry_config):
         description=description,
         container_name=container_name,
         exposed_ports=exposed_ports,
+        pull_images=pull_images,
         registry_config=registry_config,
         environment=environment,
     )

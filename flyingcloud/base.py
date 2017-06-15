@@ -91,6 +91,7 @@ class DockerBuildLayer(object):
             description=None,
             container_name=None,
             exposed_ports=None,
+            pull_images=None,
             registry_config=None,
             source_version_tag="latest",
             environment=None
@@ -101,6 +102,7 @@ class DockerBuildLayer(object):
         self.help = help
         self.description = description
         self.exposed_ports = exposed_ports or []
+        self.pull_images = pull_images or []
         self.environment = environment
 
         config = self.RegistryConfig.copy()
@@ -232,6 +234,9 @@ class DockerBuildLayer(object):
         self.layer_squashed_name = "{}-sq".format(self.layer_timestamp_name)
 
         self.initialize_build(namespace, salt_dir)
+
+        for image_name in self.pull_images:
+            self.docker_pull(namespace, image_name)
 
         if (namespace.pull_layer
                 and self.registry_config['pull_layer']
