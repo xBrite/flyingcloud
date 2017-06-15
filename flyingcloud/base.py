@@ -453,11 +453,14 @@ class DockerBuildLayer(object):
 
     def build_dockerfile(self, namespace, tag, dockerfile=None, fileobj=None):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
+        if not namespace.logged_in:
+            self.login_registry(namespace)
         if dockerfile:
             dockerfile = os.path.relpath(dockerfile, namespace.base_dir)
         image_id = None
-        for line in namespace.docker.build(tag=tag, path=namespace.base_dir,
-                                           dockerfile=dockerfile, fileobj=fileobj):
+        for line in namespace.docker.build(
+                tag=tag, path=namespace.base_dir,
+                dockerfile=dockerfile, fileobj=fileobj):
             line = line.decode('utf-8').rstrip('\r\n')
             namespace.logger.debug("%s", line)
             if not image_id:
@@ -779,6 +782,7 @@ class DockerBuildLayer(object):
         defaults.setdefault('pull_layer', True)
         defaults.setdefault('push_layer', True)
         defaults.setdefault('squash_layer', True)
+        defaults.setdefault('logged_in', False)
         defaults.setdefault('retries', 3)
         defaults.setdefault('username', os.environ.get(self.USERNAME_ENV_VAR))
         defaults.setdefault('password', os.environ.get(self.PASSWORD_ENV_VAR))
@@ -884,23 +888,28 @@ class DockerBuildLayer(object):
         namespace.docker = self.docker_client(namespace, timeout=namespace.timeout)
 
         if namespace.pull_layer or namespace.push_layer:
-            if self.registry_config['aws_ecr_region']:
-                    credentials_namespace, registry = self.ecr_get_login(
-                        self.registry_config['aws_ecr_region'])
-            else:
-                registry = self.registry_config['host']
-                credentials_namespace = namespace
-
-            self.docker_login(
-                namespace,
-                username=credentials_namespace.username,
-                password=credentials_namespace.password,
-                email=credentials_namespace.email,
-                registry=registry)
+            self.login_registry(namespace)
 
         self.add_additional_configuration(namespace)
 
         return namespace
+
+    def login_registry(self, namespace):
+        if self.registry_config['aws_ecr_region']:
+            credentials_namespace, registry = self.ecr_get_login(
+                namespace, self.registry_config['aws_ecr_region'])
+        else:
+            registry = self.registry_config['host']
+            credentials_namespace = namespace
+
+        result = self.docker_login(
+            namespace,
+            username=credentials_namespace.username,
+            password=credentials_namespace.password,
+            email=credentials_namespace.email,
+            registry=registry)
+        namespace.logger.debug("Login: %r", result)
+        namespace.logged_in = True
 
     @classmethod
     def add_parser_options(cls, subparser):
