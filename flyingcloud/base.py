@@ -117,8 +117,11 @@ class DockerBuildLayer(object):
         self.layer_latest_name = "{}:latest".format(self.docker_layer_name)
 
         if self.source_image_base_name:
-            self.source_image_name = "{}{}:{}".format(
-                host_org, self.source_image_base_name, source_version_tag)
+            if '/' in self.source_image_base_name:
+                self.source_image_name = self.source_image_base_name
+            else:
+                self.source_image_name = "{}{}:{}".format(
+                    host_org, self.source_image_base_name, source_version_tag)
         else:
             self.source_image_name = None
 

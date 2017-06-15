@@ -20,8 +20,13 @@ def get_layer(app_name, layer_name, layer_data, registry_config):
     else:
         layer_class = DockerBuildLayer
 
+    source_image_base_name = None
     parent = layer_info.get("parent")
-    source_image_base_name = '{}_{}'.format(app_name, parent) if parent else None
+    if parent:
+        if '/' in parent:
+            source_image_base_name = parent
+        else:
+            source_image_base_name = '{}_{}'.format(app_name, parent)
     help = layer_info.get('help')
     if not help:
         raise FlyingCloudError("layer %s is missing a Help string." % layer_name)
