@@ -458,8 +458,7 @@ class DockerBuildLayer(object):
 
     def build_dockerfile(self, namespace, tag, dockerfile=None, fileobj=None):
         namespace.logger.info("About to build Dockerfile, tag=%s", tag)
-        if not namespace.logged_in:
-            self.login_registry(namespace)
+        self.login_registry(namespace)
         if dockerfile:
             dockerfile = os.path.relpath(dockerfile, namespace.base_dir)
         image_id = None
@@ -685,6 +684,7 @@ class DockerBuildLayer(object):
         return self._docker_push_pull(namespace, image_name, "push")
 
     def _docker_push_pull(self, namespace, image_name, verb):
+        self.login_registry(namespace)
         give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
             verb, image_name, namespace.retries)
         for attempt in range(1, namespace.retries + 1):
@@ -893,28 +893,33 @@ class DockerBuildLayer(object):
         namespace.docker = self.docker_client(namespace, timeout=namespace.timeout)
 
         if namespace.pull_layer or namespace.push_layer:
+            # Check credentials ASAP
             self.login_registry(namespace)
 
         self.add_additional_configuration(namespace)
 
         return namespace
 
-    def login_registry(self, namespace):
-        if self.registry_config['aws_ecr_region']:
-            credentials_namespace, registry = self.ecr_get_login(
-                namespace, self.registry_config['aws_ecr_region'])
-        else:
-            registry = self.registry_config['host']
-            credentials_namespace = namespace
+    def login_registry(self, namespace, force=False):
+        if force or not namespace.logged_in:
+            if self.registry_config['aws_ecr_region']:
+                credentials_namespace, registry = self.ecr_get_login(
+                    namespace, self.registry_config['aws_ecr_region'])
+            else:
+                registry = self.registry_config['host']
+                credentials_namespace = namespace
 
-        result = self.docker_login(
-            namespace,
-            username=credentials_namespace.username,
-            password=credentials_namespace.password,
-            email=credentials_namespace.email,
-            registry=registry)
-        namespace.logger.debug("Login: %r", result)
-        namespace.logged_in = True
+            result = self.docker_login(
+                namespace,
+                username=credentials_namespace.username,
+                password=credentials_namespace.password,
+                email=credentials_namespace.email,
+                registry=registry)
+            namespace.logger.debug("Login: %r", result)
+            namespace.logged_in = True
+            return result
+        else:
+            return None
 
     @classmethod
     def add_parser_options(cls, subparser):
@@ -922,10 +927,11 @@ class DockerBuildLayer(object):
         pass
 
     def ecr_get_login(self, namespace, aws_ecr_region):
+        """AWS EC2 Container Registry needs a 12-hour token."""
         aws_cli_path = os.path.join(os.getenv("VIRTUAL_ENV"), "bin", "aws")
         command = ["ecr", "get-login", "--region", aws_ecr_region]
 
-        # As of Docker 17.06, --email is no longer accepted for docker login
+        # As of Docker v17.12, --email is no longer accepted for docker login.
         # https://github.com/aws/aws-cli/issues/1926
         import awscli
         from distutils.version import LooseVersion
