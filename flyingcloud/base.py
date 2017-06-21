@@ -201,7 +201,8 @@ class DockerBuildLayer(object):
 
     def do_kill(self, namespace):
         try:
-            self.docker_cleanup(namespace, self.container_name)
+            for c in namespace.docker.containers(filters=dict(ancestor=self.docker_layer_name)):
+                self.docker_cleanup(namespace, c['Id'])
         except (docker.errors.DockerException, docker.errors.APIError):
             pass
         self.kill_port_forwarding(namespace)
