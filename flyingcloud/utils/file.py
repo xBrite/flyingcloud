@@ -26,6 +26,8 @@ def make_dir(target_dir, mode=0o777):
             # Handle race condition of simultaneous dir creation
             if e.errno != errno.EEXIST:
                 raise
+            elif not os.path.isdir(target_dir):
+                raise
 
 
 def move_file_to_dir(source_file, target_dir, target_basename=None):
@@ -44,6 +46,7 @@ def find_in_path(command):
         f = os.path.join(p, command)
         if os.path.exists(f):
             return f
+
 
 def find_recursive_pattern(base_dir, pattern):
     for root, dirnames, filenames in os.walk(base_dir):
