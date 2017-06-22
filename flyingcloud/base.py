@@ -537,7 +537,10 @@ class DockerBuildLayer(object):
             url = "https://{0}/v1/repositories/{1}/{2}/tags".format(
                 parts[0], parts[1], parts[2].split(':')[0])
             r = requests.get(url, auth=(namespace.username, namespace.password))
-            return r.json()
+            try:
+                return r.json()
+            except ValueError:
+                return None
 
     def docker_start(self, namespace, container_id, **kwargs):
         return namespace.docker.start(container_id, **kwargs)
