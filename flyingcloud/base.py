@@ -484,7 +484,7 @@ class DockerBuildLayer(object):
             environment=None, detach=True, volume_map=None, **kwargs):
         namespace.logger.info("Creating container '%s' from image %s",
                               container_name, image_name)
-        namespace.logger.debug("Environment: %r", environment)
+        namespace.logger.debug("Environment: %r", environment.keys())
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, self.docker_tags_for_image(namespace, image_name))
