@@ -177,7 +177,7 @@ class DockerBuildLayer(object):
 
         :param env_var_list: ["VAR1=value1", "VAR2=value2", ...]
         :param env_config: dict(VAR1="$SOME_VALUE", VAR2="${OTHER_VALUE}", VAR3="literal")
-        :return:
+        :return: dict
         """
         env = {}
         for e in (env_config or []):
@@ -186,7 +186,7 @@ class DockerBuildLayer(object):
                 #   environment:
                 #     - AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
                 #     - AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-                for k,v in e.items():
+                for k, v in e.items():
                     env[k] = os.path.expandvars(v)
             else:
                 # Handle:
@@ -194,7 +194,9 @@ class DockerBuildLayer(object):
                 #     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
                 #     AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
                 env[e] = os.path.expandvars(env_config[e])
+        # env_var_list (from command line) trumps env_config
         for e in (env_var_list or []):
+            # Handle "key=value"
             k, v = tuple(e.split('=', 1))
             env[k] = v
         return env
