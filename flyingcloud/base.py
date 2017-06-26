@@ -241,13 +241,12 @@ class DockerBuildLayer(object):
 
         self.initialize_build(namespace, salt_dir)
 
-        for image_name in self.pull_images:
-            self.docker_pull(namespace, image_name)
+        if namespace.pull_layer and self.registry_config['pull_layer']:
+            for image_name in self.pull_images:
+                self.docker_pull(namespace, image_name)
 
-        if (namespace.pull_layer
-                and self.registry_config['pull_layer']
-                and self.source_image_name):
-            self.docker_pull(namespace, self.source_image_name)
+            if self.source_image_name:
+                self.docker_pull(namespace, self.source_image_name)
 
         dockerfile = self.get_dockerfile(salt_dir)
         if dockerfile:
