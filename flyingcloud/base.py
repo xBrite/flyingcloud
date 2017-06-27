@@ -782,6 +782,7 @@ class DockerBuildLayer(object):
             description=kwargs.pop('description', "Build a Docker image using SaltStack"))
 
         defaults = defaults or {}
+        defaults.setdefault('verbose', False)
         defaults.setdefault('base_dir', os.path.abspath(os.path.dirname(__file__)))
         defaults.setdefault('salt_dir', os.path.join(defaults['base_dir'], "salt"))
         defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "flyingcloud.log"))
