@@ -171,7 +171,7 @@ class DockerBuildLayer(object):
         self.docker_start(namespace, target_container_name)
 
     @classmethod
-    def make_environment(cls, env_var_list, env_config):
+    def make_environment(cls, env_var_list, env_config, env=None):
         """
         Build a Docker environment block from YAML config, --env command-line params, and os.environ.
 
@@ -179,7 +179,7 @@ class DockerBuildLayer(object):
         :param env_config: dict(VAR1="$SOME_VALUE", VAR2="${OTHER_VALUE}", VAR3="literal")
         :return: dict
         """
-        env = {}
+        env = env or {}
         for e in (env_config or []):
             if isinstance(e, dict):
                 # Handle:
