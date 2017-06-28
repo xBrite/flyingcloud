@@ -483,20 +483,24 @@ class DockerBuildLayer(object):
     def docker_create_container(
             self, namespace, container_name, image_name,
             environment=None, detach=True, volume_map=None, **kwargs):
-        namespace.logger.info("Creating container '%s' from image %s",
-                              container_name, image_name)
-        namespace.logger.debug("Environment: %r", environment.keys())
+        namespace.logger.info(
+            "Creating container '%s' from image %s",
+            container_name, image_name)
+        # `environment` should either be a dict or a list of strings in the form "key=value"
+        namespace.logger.debug(
+            "Environment: %r",
+            environment.keys() if isinstance(environment, dict) else environment)
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, self.docker_tags_for_image(namespace, image_name))
 
         kwargs['image'] = image_name
         kwargs['name'] = container_name
-        kwargs['environment'] = environment
         kwargs['detach'] = detach
         kwargs['ports'] = self.container_ports(self.exposed_ports)
         kwargs.update(self.docker_host_config(namespace, volume_map))
         namespace.logger.info("create_container: %r", kwargs)
+        kwargs['environment'] = environment
 
         try:
             container = namespace.docker.create_container(**kwargs)
