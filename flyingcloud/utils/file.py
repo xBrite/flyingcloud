@@ -18,7 +18,6 @@ def make_dir(target_dir, mode=0o777):
     if os.path.exists(target_dir):
         if not os.path.isdir(target_dir):
             raise ValueError("'%s' is not a directory" % target_dir)
-        os.chmod(target_dir, mode)
     else:
         try:
             os.makedirs(target_dir, mode)
@@ -28,6 +27,7 @@ def make_dir(target_dir, mode=0o777):
                 raise
             elif not os.path.isdir(target_dir):
                 raise
+    os.chmod(target_dir, mode)
 
 
 def move_file_to_dir(source_file, target_dir, target_basename=None):
