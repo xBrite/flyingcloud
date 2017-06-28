@@ -61,12 +61,12 @@ class TestRunner(DockerBuildLayer):
         pass
 
     def make_environment_dict(self, namespace):
-        environment = {
-            'VIRTUAL_ENV': '/venv'
-        }
-        if namespace.env_vars:
-            environment.update(namespace.env_vars)
-        return environment
+        return self.make_environment(
+            namespace.env_vars,
+            self.environment,
+            {
+                'VIRTUAL_ENV': '/venv'
+            })
 
     @classmethod
     def add_parser_options(cls, subparser):
