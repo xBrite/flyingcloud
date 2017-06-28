@@ -680,7 +680,10 @@ class DockerBuildLayer(object):
         namespace.docker.remove_image(image=image_name, force=force)
 
     def image_name2repo_tag(self, image_name, tag=None):
-        repo, image_tag = image_name.split(':')
+        if ':' in image_name:
+            repo, image_tag = image_name.split(':')
+        else:
+            repo, image_tag = image_name, 'latest'
         tag = tag or image_tag
         return repo, tag
 
@@ -699,13 +702,13 @@ class DockerBuildLayer(object):
         self.login_registry(namespace)
         give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
             verb, image_name, namespace.retries)
+        repo, tag = self.image_name2repo_tag(image_name)
+        method = getattr(namespace.docker, verb)
+        generator = method(repository=repo, tag=tag, stream=True)
         for attempt in range(1, namespace.retries + 1):
             try:
                 namespace.logger.info("docker_%s %s, attempt %d/%d",
                                       verb, image_name, attempt, namespace.retries)
-                repo, tag = self.image_name2repo_tag(image_name)
-                method = getattr(namespace.docker, verb)
-                generator = method(repository=repo, tag=tag, stream=True)
                 return self.read_docker_output_stream(
                     namespace, generator, "docker_{}".format(verb))
             except (DockerResultError, docker.errors.DockerException, docker.errors.APIError):
