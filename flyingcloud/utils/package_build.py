@@ -16,7 +16,7 @@ from .vcs import find_vcs
 from .archive import abspath, zip_add_directory, zip_write_directory, check_zipfile
 
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 
 def parse_args(args=None, namespace=None, defaults=None):
@@ -141,15 +141,24 @@ def emit_build_info(namespace):
     return info
 
 
-def zip_package(namespace, exclude_dirs=None):
-    exclude_dirs = exclude_dirs or ['.git', '.idea', '.main', '.env']
-    exclude_extensions = ('.pyc', '.zip', '.log', '.dump', '.pb', '.sqlite', '.coverage', '.egg-info', '.o', '.dump.gz')
-    exclude_filenames = ('TAGS', 'gusteaut')
+def zip_package(
+        namespace,
+        exclude_dirs=None,
+        exclude_extensions=None,
+        exclude_filenames=None,
+        logger=None):
+    exclude_dirs = ((exclude_dirs or []) + [
+        '.git', '.idea', '.main', '.env'])
+    exclude_extensions = ((exclude_extensions or []) + [
+        '.pyc', '.zip', '.log', '.dump', '.pb', '.sqlite',
+        '.coverage', '.egg-info', '.o', '.dump.gz'])
+    exclude_filenames = ((exclude_filenames or []) + [
+        'TAGS', '.DS_Store'])
+    logger = logger or print if namespace.verbose else lambda x: None
 
     if not namespace.dry_run:
         with zipfile.ZipFile(
                 namespace.zipfile_name, "w", zipfile.ZIP_DEFLATED) as zip_archive:
-            logger = print if namespace.verbose else lambda x: None
             zip_add_directory(
                 zip_archive, namespace.package_path,
                 exclude_dirs, exclude_extensions, exclude_filenames,
@@ -189,11 +198,11 @@ def zip_package(namespace, exclude_dirs=None):
     return namespace.zipfile_name
 
 
-def build_package(args=None, exclude_dirs=None, defaults=None):
+def build_package(args=None, defaults=None, **kwargs):
     namespace = parse_args(args, defaults=defaults)
     result = emit_build_info(namespace)
     if not namespace.emit_build_info_only:
-        result = zip_package(namespace, exclude_dirs=exclude_dirs)
+        result = zip_package(namespace, **kwargs)
     return result
 
 

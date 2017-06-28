@@ -3,6 +3,7 @@
 from __future__ import unicode_literals, absolute_import, print_function
 
 import os
+import time
 
 from flyingcloud import DockerBuildLayer, CommandError
 
@@ -14,6 +15,8 @@ class TestRunner(DockerBuildLayer):
     def do_run(self, namespace):
         test_type = namespace.test_type
         test_path = "/venv/lib/python2.7/site-packages/flask_example_app/tests"
+        sleep_interval = 2.0
+        environment = self.make_environment_dict(namespace)
 
         if test_type == "unit":
             test_dir = os.path.join(test_path, "unit")
@@ -25,29 +28,45 @@ class TestRunner(DockerBuildLayer):
         if namespace.pull_layer and self.registry_config['pull_layer']:
             self.docker_pull(namespace, self.source_image_name)
 
-        environment = {}
         if namespace.base_url:
             environment['BASE_URL'] = namespace.base_url
 
         namespace.logger.info(
             "Running tests: type=%s, environment=%r", test_type, environment)
         container_id = self.docker_create_container(
-            namespace, None, self.source_image_name, environment=environment)
+            namespace,
+            self.container_name,
+            self.source_image_name,
+            environment=environment)
         self.docker_start(namespace, container_id)
+        namespace.logger.info("Sleeping for %.1f seconds", sleep_interval)
+        time.sleep(sleep_interval)
 
-        cmd = ["/venv/bin/py.test", "--tb=long", test_dir]
-        result, full_output = self.docker_exec(
-            namespace, container_id, cmd, raise_on_error=False)
-        self.docker_stop(namespace, container_id)
-        namespace.logger.info("Run tests: %r", result)
-        namespace.logger.info("%s", full_output)
-        exit_code = result['ExitCode']
-        if exit_code != 0:
-            raise CommandError("testrunner {}: exit code was non-zero: {}".format(
-                test_dir, exit_code))
+        try:
+            cmd = ["/venv/bin/py.test", "--tb=long", test_dir]
+            result, full_output = self.docker_exec(
+                namespace, container_id, cmd, raise_on_error=False)
+            self.docker_stop(namespace, container_id)
+            namespace.logger.info("Run tests: %r", result)
+            namespace.logger.info("%s", full_output)
+            exit_code = result['ExitCode']
+            if exit_code != 0:
+                raise CommandError("testrunner {}: exit code was non-zero: {}".format(
+                    test_dir, exit_code))
+        finally:
+            self.docker_stop(namespace, container_id)
+            self.docker_remove_container(namespace, self.container_name)
 
     def do_kill(self, namespace):
         pass
+
+    def make_environment_dict(self, namespace):
+        return self.make_environment(
+            namespace.env_vars,
+            self.environment,
+            {
+                'VIRTUAL_ENV': '/venv'
+            })
 
     @classmethod
     def add_parser_options(cls, subparser):

@@ -52,18 +52,23 @@ def zip_add_directory(
         logger("zip: dirpath={0!r}, dirnames={1!r}, filenames={2!r}".format(
             dirpath, dirnames, filenames))
 
-        # Must modify dirnames in-place, per os.walk documentation,
-        # to prevent traversal of excluded subdirectories.
-        # We must enumerate a copy of `dirnames` as the in-place modifications
-        # confuse the iterator.
-        for dir in list(dirnames):
-            logger("zip: Examining dir {0!r}".format(dir))
-            if is_excluded_dirname(dir) or is_excluded_dirpath(dirpath) \
-                    or filename_extension_excluded(dir):
-                logger("zip: Removing dir {0!r}".format(dir))
-                dirnames.remove(dir)
-            else:
-                logger("zip: Retaining dir {0!r}".format(dir))
+        if is_excluded_dirpath(dirpath):
+            logger("zip: Removing dirpath {0!r}".format(dirpath))
+            dirnames[:] = []
+            filenames = []
+            continue
+        else:
+            # Must modify dirnames in-place, per os.walk documentation,
+            # to prevent traversal of excluded subdirectories.
+            # We must enumerate a copy of `dirnames` as the in-place modifications
+            # confuse the iterator.
+            for dir in list(dirnames):
+                logger("zip: Examining dir {0!r}".format(dir))
+                if is_excluded_dirname(dir) or filename_extension_excluded(dir):
+                    logger("zip: Removing dir {0!r}".format(dir))
+                    dirnames.remove(dir)
+                else:
+                    logger("zip: Retaining dir {0!r}".format(dir))
 
         files = []
 

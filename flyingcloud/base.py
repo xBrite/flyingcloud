@@ -171,22 +171,22 @@ class DockerBuildLayer(object):
         self.docker_start(namespace, target_container_name)
 
     @classmethod
-    def make_environment(cls, env_var_list, env_config):
+    def make_environment(cls, env_var_list, env_config, env=None):
         """
         Build a Docker environment block from YAML config, --env command-line params, and os.environ.
 
         :param env_var_list: ["VAR1=value1", "VAR2=value2", ...]
         :param env_config: dict(VAR1="$SOME_VALUE", VAR2="${OTHER_VALUE}", VAR3="literal")
-        :return:
+        :return: dict
         """
-        env = {}
+        env = env or {}
         for e in (env_config or []):
             if isinstance(e, dict):
                 # Handle:
                 #   environment:
                 #     - AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
                 #     - AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-                for k,v in e.items():
+                for k, v in e.items():
                     env[k] = os.path.expandvars(v)
             else:
                 # Handle:
@@ -194,7 +194,9 @@ class DockerBuildLayer(object):
                 #     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
                 #     AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
                 env[e] = os.path.expandvars(env_config[e])
+        # env_var_list (from command line) trumps env_config
         for e in (env_var_list or []):
+            # Handle "key=value"
             k, v = tuple(e.split('=', 1))
             env[k] = v
         return env
@@ -239,13 +241,12 @@ class DockerBuildLayer(object):
 
         self.initialize_build(namespace, salt_dir)
 
-        for image_name in self.pull_images:
-            self.docker_pull(namespace, image_name)
+        if namespace.pull_layer and self.registry_config['pull_layer']:
+            for image_name in self.pull_images:
+                self.docker_pull(namespace, image_name)
 
-        if (namespace.pull_layer
-                and self.registry_config['pull_layer']
-                and self.source_image_name):
-            self.docker_pull(namespace, self.source_image_name)
+            if self.source_image_name:
+                self.docker_pull(namespace, self.source_image_name)
 
         dockerfile = self.get_dockerfile(salt_dir)
         if dockerfile:
@@ -482,20 +483,24 @@ class DockerBuildLayer(object):
     def docker_create_container(
             self, namespace, container_name, image_name,
             environment=None, detach=True, volume_map=None, **kwargs):
-        namespace.logger.info("Creating container '%s' from image %s",
-                              container_name, image_name)
-        namespace.logger.debug("Environment: %r", environment)
+        namespace.logger.info(
+            "Creating container '%s' from image %s",
+            container_name, image_name)
+        # `environment` should either be a dict or a list of strings in the form "key=value"
+        namespace.logger.debug(
+            "Environment: %r",
+            environment.keys() if isinstance(environment, dict) else environment)
         namespace.logger.debug(
             "Tags for image '%s': %s",
             image_name, self.docker_tags_for_image(namespace, image_name))
 
         kwargs['image'] = image_name
         kwargs['name'] = container_name
-        kwargs['environment'] = environment
         kwargs['detach'] = detach
         kwargs['ports'] = self.container_ports(self.exposed_ports)
         kwargs.update(self.docker_host_config(namespace, volume_map))
         namespace.logger.info("create_container: %r", kwargs)
+        kwargs['environment'] = environment
 
         try:
             container = namespace.docker.create_container(**kwargs)
@@ -537,7 +542,10 @@ class DockerBuildLayer(object):
             url = "https://{0}/v1/repositories/{1}/{2}/tags".format(
                 parts[0], parts[1], parts[2].split(':')[0])
             r = requests.get(url, auth=(namespace.username, namespace.password))
-            return r.json()
+            try:
+                return r.json()
+            except ValueError:
+                return None
 
     def docker_start(self, namespace, container_id, **kwargs):
         return namespace.docker.start(container_id, **kwargs)
@@ -778,6 +786,7 @@ class DockerBuildLayer(object):
             description=kwargs.pop('description', "Build a Docker image using SaltStack"))
 
         defaults = defaults or {}
+        defaults.setdefault('verbose', False)
         defaults.setdefault('base_dir', os.path.abspath(os.path.dirname(__file__)))
         defaults.setdefault('salt_dir', os.path.join(defaults['base_dir'], "salt"))
         defaults.setdefault('logfile', os.path.join(defaults['base_dir'], "flyingcloud.log"))
