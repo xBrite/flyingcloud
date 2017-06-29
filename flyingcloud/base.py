@@ -550,43 +550,46 @@ class DockerBuildLayer(object):
     def docker_start(self, namespace, container_id, **kwargs):
         return namespace.docker.start(container_id, **kwargs)
 
-    def docker_exec(self, namespace, container_id, cmd, timeout=None, raise_on_error=True):
+    def docker_exec(self, namespace, container_id, cmd, **kwargs):
         exec_id = self.docker_exec_create(namespace, container_id, cmd)
-        return self.docker_exec_start(namespace, exec_id, timeout, raise_on_error)
+        return self.docker_exec_start(namespace, exec_id, **kwargs)
 
     def docker_exec_create(self, namespace, container_id, cmd):
         namespace.logger.info("Running %r in container %s", cmd, container_id[:12])
         exec_create = namespace.docker.exec_create(container=container_id, cmd=cmd)
         return exec_create['Id']
 
-    def docker_exec_start(self, namespace, exec_id, timeout=None, raise_on_error=True):
+    def docker_exec_start(self, namespace, exec_id, timeout=None, raise_on_error=True, **kwargs):
         timeout = timeout or namespace.timeout or self.SaltExecTimeout
         # Use a distinct client with a custom timeout
         # (synchronous execs can last much longer than 60 seconds)
         client = self.docker_client(namespace, timeout=timeout)
         generator = client.exec_start(exec_id=exec_id, stream=True)
-        full_output = self.read_docker_output_stream(namespace, generator, "docker_exec")
+        full_output = self.read_docker_output_stream(namespace, generator, "docker_exec", **kwargs)
         result = client.exec_inspect(exec_id=exec_id)
         exit_code = result['ExitCode']
         if exit_code != 0 and raise_on_error:
             raise ExecError("docker_exec exit code was non-zero: {} (result: {})".format(exit_code, result))
         return result, full_output
 
-    def read_docker_output_stream(self, namespace, generator, logger_prefix):
+    def read_docker_output_stream(self, namespace, generator, logger_prefix, log_level=None):
+        log_level = log_level or logging.DEBUG
+        logger = getattr(namespace.logger, logging.getLevelName(log_level).lower())
         full_output = []
+
         for chunk in generator:
             try:
                 decoded_chunk = chunk.decode('utf-8')
             except UnicodeDecodeError as e:
                 decoded_chunk = chunk.decode('utf-8', 'replace')
-                namespace.logger.debug("Couldn't decode %s", hexdump(chunk, 64))
+                logger("Couldn't decode %s", hexdump(chunk, 64))
 
             full_output.append(decoded_chunk)
             try:
                 data = json.loads(decoded_chunk)
             except ValueError:
                 data = decoded_chunk.rstrip('\r\n')
-            namespace.logger.debug("%s: %s", logger_prefix, data)
+            logger("%s: %s", logger_prefix, data)
             if isinstance(data, dict) and 'error' in data:
                 raise DockerResultError("Error: {!r}".format(data))
         return '\n'.join(full_output)
@@ -692,13 +695,13 @@ class DockerBuildLayer(object):
         namespace.logger.info("Tagging image %s as repo=%s, tag=%s", image_name, repo, tag)
         namespace.docker.tag(image=image_name, repository=repo, tag=tag, force=force)
 
-    def docker_pull(self, namespace, image_name):
-        return self._docker_push_pull(namespace, image_name, "pull")
+    def docker_pull(self, namespace, image_name, **kwargs):
+        return self._docker_push_pull(namespace, image_name, "pull", **kwargs)
 
-    def docker_push(self, namespace, image_name):
-        return self._docker_push_pull(namespace, image_name, "push")
+    def docker_push(self, namespace, image_name, **kwargs):
+        return self._docker_push_pull(namespace, image_name, "push", **kwargs)
 
-    def _docker_push_pull(self, namespace, image_name, verb):
+    def _docker_push_pull(self, namespace, image_name, verb, **kwargs):
         self.login_registry(namespace)
         give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
             verb, image_name, namespace.retries)
@@ -710,7 +713,7 @@ class DockerBuildLayer(object):
                 namespace.logger.info("docker_%s %s, attempt %d/%d",
                                       verb, image_name, attempt, namespace.retries)
                 return self.read_docker_output_stream(
-                    namespace, generator, "docker_{}".format(verb))
+                    namespace, generator, "docker_{}".format(verb), **kwargs)
             except (DockerResultError, docker.errors.DockerException, docker.errors.APIError):
                 if attempt == namespace.retries:
                     namespace.logger.info("%s", give_up_message)
