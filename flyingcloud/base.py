@@ -298,7 +298,8 @@ class DockerBuildLayer(object):
             container_name,
             source_image_name,
             result_image_name,
-            salt_dir, timeout=SaltExecTimeout):
+            salt_dir,
+            timeout=SaltExecTimeout):
         """Use SaltStack to configure container"""
         if not self.salt_states_exist(salt_dir):
             namespace.logger.info("No salt states found in '%s'; not salting.", salt_dir)
@@ -323,7 +324,7 @@ class DockerBuildLayer(object):
             result, salt_output = self.docker_exec(
                 namespace, target_container_name,
                 ["salt-call", "--local", "state.highstate"],
-                timeout)
+                timeout=timeout)
             duration = round(time.time() - start_time)
             namespace.logger.info(
                 "Finished Salting: duration=%d:%02d minutes", duration // 60, duration % 60)
