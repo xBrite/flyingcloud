@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='flyingcloud',
-    version='0.3.25',
+    version='0.3.26',
     description='Build Docker images using SaltStack',
     author='MetaBrite, Inc.',
     author_email='flyingcloud-admin@metabrite.com',
