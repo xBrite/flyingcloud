@@ -708,16 +708,19 @@ class DockerBuildLayer(object):
             verb, image_name, namespace.retries)
         repo, tag = self.image_name2repo_tag(image_name)
         method = getattr(namespace.docker, verb)
-        generator = method(repository=repo, tag=tag, stream=True)
         for attempt in range(1, namespace.retries + 1):
             try:
-                namespace.logger.info("docker_%s %s, attempt %d/%d",
-                                      verb, image_name, attempt, namespace.retries)
+                namespace.logger.info(
+                    "docker_%s repo=%s, tag=%s, attempt %d/%d",
+                    verb, repo, tag, attempt, namespace.retries)
+                generator = method(repository=repo, tag=tag, stream=True)
                 return self.read_docker_output_stream(
                     namespace, generator, "docker_{}".format(verb), **kwargs)
             except (DockerResultError, docker.errors.DockerException, docker.errors.APIError):
                 if attempt == namespace.retries:
                     namespace.logger.info("%s", give_up_message)
+                    namespace.logger.info(
+                        "Perhaps you need to reset your Docker credentials in '~/.docker/'?")
                     raise
         else:
             raise DockerResultError(give_up_message)
