@@ -896,11 +896,14 @@ class DockerBuildLayer(object):
             title="Layer Names",
             description="The layers which can be built, run, or killed.")
 
+        layer_dict = {}
         for layer_class_or_inst in layer_classes:
             if type(layer_class_or_inst).__name__ == 'classobj':
                 layer_inst = layer_class_or_inst()
+                layer_dict[layer_class_or_inst.__name__] = layer_inst
             else:
                 layer_inst = layer_class_or_inst
+                layer_dict[layer_inst.__class__.__name__] = layer_inst
             subparser = subparsers.add_parser(
                 layer_inst.layer_name,
                 description=layer_inst.description,
@@ -909,6 +912,7 @@ class DockerBuildLayer(object):
                 layer_inst=layer_inst,
             )
             layer_inst.add_parser_options(subparser)
+        parser.set_defaults(layer_dict=layer_dict)
 
         namespace = parser.parse_args()
 
