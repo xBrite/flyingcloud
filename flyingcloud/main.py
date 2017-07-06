@@ -2,8 +2,8 @@
 
 from __future__ import unicode_literals, absolute_import, print_function
 
+from collections import OrderedDict
 import os
-
 import sys
 import yaml
 
@@ -64,9 +64,9 @@ def parse_project_yaml(project_info, layers_info):
     project_info.setdefault('description', "Build Docker images using SaltStack")
 
     registry_config = project_info.get('registry')
-    layers = [get_layer(app_name, layer_name, layers_info[layer_name], registry_config)
+    layers = [(layer_name, get_layer(app_name, layer_name, layers_info[layer_name], registry_config))
               for layer_name in project_info["layers"]]
-    return layers
+    return OrderedDict(layers)
 
 
 def get_project_info(project_root):
@@ -111,10 +111,10 @@ def main():
         raise
 
     if layers is not None:
-        instance = layers[0]
+        instance = layers[list(layers.keys())[0]]
         namespace = instance.parse_args(
             defaults,
-            *layers,
+            layers,
             description=project_info['description'])
         instance.check_environment_variables(namespace)
 
@@ -124,6 +124,7 @@ def main():
         instance = DockerBuildLayer('no_app', 'no_layer', 'no_image_base', "no layer present")
         namespace = instance.parse_args(
             defaults,
+            {},
             description='** No flyingcloud.yaml found, so no subcommands are available to build layers. Are you in the right directory?')
 
 if __name__ == '__main__':

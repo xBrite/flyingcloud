@@ -128,9 +128,9 @@ class DockerBuildLayer(object):
         # These require the command-line args to properly initialize
         self.layer_timestamp_name = self.layer_squashed_name = None
 
-    def main(self, defaults, *layer_classes, **kwargs):
+    def main(self, defaults, layer_classes, **kwargs):
         self.check_user_is_root()
-        namespace = self.parse_args(defaults, *layer_classes, **kwargs)
+        namespace = self.parse_args(defaults, layer_classes, **kwargs)
         self.check_environment_variables(namespace)
         self.do_operation(namespace)
 
@@ -578,10 +578,11 @@ class DockerBuildLayer(object):
         logger = getattr(namespace.logger, logging.getLevelName(log_level).lower())
         full_output = []
 
-        for chunk in generator:
+        for raw_chunk in generator:
             try:
+                chunk, repl_count = self.filter_stream_header(raw_chunk)
                 decoded_chunk = chunk.decode('utf-8')
-            except UnicodeDecodeError as e:
+            except UnicodeDecodeError:
                 decoded_chunk = chunk.decode('utf-8', 'replace')
                 logger("Couldn't decode %s", hexdump(chunk, 64))
 
@@ -594,6 +595,17 @@ class DockerBuildLayer(object):
             if isinstance(data, dict) and 'error' in data:
                 raise DockerResultError("Error: {!r}".format(data))
         return '\n'.join(full_output)
+
+    # See "Stream details" at https://docs.docker.com/engine/api/v1.18/
+    # {STREAM_TYPE, 0, 0, 0, SIZE1, SIZE2, SIZE3, SIZE4}
+    # STREAM_TYPE = 0 (stdin), = 1 (stdout), = 2 (stderr)
+    StreamTypeHeader = re.compile(br'[\x00-\x02]\x00\x00\x00....')
+
+    @classmethod
+    def filter_stream_header(cls, s):
+        """Remove bogus stream headers from socket output"""
+        new_string, repl_count = cls.StreamTypeHeader.subn(b'', s)
+        return new_string, repl_count
 
     def docker_commit(self, namespace, container_id, result_image_name):
         repo, tag = self.image_name2repo_tag(result_image_name)
@@ -708,16 +720,19 @@ class DockerBuildLayer(object):
             verb, image_name, namespace.retries)
         repo, tag = self.image_name2repo_tag(image_name)
         method = getattr(namespace.docker, verb)
-        generator = method(repository=repo, tag=tag, stream=True)
         for attempt in range(1, namespace.retries + 1):
             try:
-                namespace.logger.info("docker_%s %s, attempt %d/%d",
-                                      verb, image_name, attempt, namespace.retries)
+                namespace.logger.info(
+                    "docker_%s repo=%s, tag=%s, attempt %d/%d",
+                    verb, repo, tag, attempt, namespace.retries)
+                generator = method(repository=repo, tag=tag, stream=True)
                 return self.read_docker_output_stream(
                     namespace, generator, "docker_{}".format(verb), **kwargs)
             except (DockerResultError, docker.errors.DockerException, docker.errors.APIError):
                 if attempt == namespace.retries:
                     namespace.logger.info("%s", give_up_message)
+                    namespace.logger.info(
+                        "Perhaps you need to reset your Docker credentials in '~/.docker/'?")
                     raise
         else:
             raise DockerResultError(give_up_message)
@@ -787,7 +802,7 @@ class DockerBuildLayer(object):
         """Override to add additional configuration to namespace"""
         pass
 
-    def parse_args(self, defaults, *layer_classes, **kwargs):
+    def parse_args(self, defaults, layer_classes, **kwargs):
         parser = argparse.ArgumentParser(
             prog='flyingcloud',
             description=kwargs.pop('description', "Build a Docker image using SaltStack"))
@@ -804,9 +819,10 @@ class DockerBuildLayer(object):
             datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
         defaults.setdefault('operation', 'build')
 
+        defaults.setdefault('timeout', self.DefaultTimeout)
         defaults.setdefault('pull_layer', True)
         defaults.setdefault('push_layer', True)
-        defaults.setdefault('squash_layer', True)
+        defaults.setdefault('squash_layer', False)
         defaults.setdefault('logged_in', False)
         defaults.setdefault('retries', 3)
         defaults.setdefault('username', os.environ.get(self.USERNAME_ENV_VAR))
@@ -820,7 +836,7 @@ class DockerBuildLayer(object):
         parser.set_defaults(**defaults)
 
         parser.add_argument(
-            '--timeout', '-t', type=int, default=self.DefaultTimeout,
+            '--timeout', '-t', type=int,
             help="Docker client timeout in seconds. Default: %(default)s")
         # TODO: pull_layer and push_layer should be disabled by default for --run and --kill
         parser.add_argument(
@@ -836,6 +852,9 @@ class DockerBuildLayer(object):
             '--no-push', '-P', dest='push_layer', action='store_false',
             help="Do not push Docker image to repository")
         parser.add_argument(
+            '--squash', dest='squash_layer', action='store_true',
+            help="Squash Docker image. Default: %(default)s")
+        parser.add_argument(
             '--no-squash', '-S', dest='squash_layer', action='store_false',
             help="Do not squash Docker image")
         parser.add_argument(
@@ -844,14 +863,16 @@ class DockerBuildLayer(object):
                  "Default: %(default)d")
         parser.add_argument(
             '--commit-failed-builds', '-C', action='store_true',
-            help="Commit failed builds. Will also push to repository, if that's configured. "
+            help="Commit failed builds. "
+                 "Will also push to repository, if that's configured. "
                  "This aids postmortem debugging.")
         parser.add_argument(
             '--debug', '-D', action='store_true',
             help="Set terminal logging level to DEBUG, etc")
         parser.add_argument(
             '--env', '-E', action='append', dest='env_vars', metavar='ENV_VAR',
-            help="Set environment variables for --run. Use --env VAR1=value1 --env VAR2=value2 ...")
+            help="Set environment variables for --run. "
+                 "Use --env VAR1=value1 --env VAR2=value2 ...")
         parser.add_argument(
             '--username', '-u',
             help="Username for Docker registry. Default: %(default)r")
@@ -861,18 +882,19 @@ class DockerBuildLayer(object):
                 self.elide_password(parser.get_default('password'))))
         parser.add_argument(
             '--email', '-e',
-            help="Email address for Docker registry. Default: %(default)r")
+            help="Email address for Docker registry. "
+                 "Default: %(default)r. Deprecated.")
 
         if self.docker_machine_platform():
             parser.add_argument(
                 '--use-docker-machine', '-M', dest='use_docker_machine',
                 action='store_true',
-                help = "Use Docker Machine rather than Docker for Mac/Windows. "
-                       "Default: %(default)s")
+                help="Use Docker Machine rather than Docker for Mac/Windows. "
+                     "Default: %(default)s. Deprecated.")
             parser.add_argument(
                 '--no-use-docker-machine', '-m', dest='use_docker_machine',
                 action='store_false',
-                help = "Do not use Docker Machine")
+                help="Do not use Docker Machine")
             parser.add_argument(
                 '--docker-machine-name', '-N',
                 help="Name of machine to use with Docker Machine. Default: '%(default)s'")
@@ -893,7 +915,7 @@ class DockerBuildLayer(object):
             title="Layer Names",
             description="The layers which can be built, run, or killed.")
 
-        for layer_class_or_inst in layer_classes:
+        for layer_name, layer_class_or_inst in layer_classes.items():
             if type(layer_class_or_inst).__name__ == 'classobj':
                 layer_inst = layer_class_or_inst()
             else:
@@ -906,6 +928,7 @@ class DockerBuildLayer(object):
                 layer_inst=layer_inst,
             )
             layer_inst.add_parser_options(subparser)
+        parser.set_defaults(layer_dict=layer_classes)
 
         namespace = parser.parse_args()
 
@@ -1001,7 +1024,8 @@ class DockerBuildLayer(object):
 
     def get_docker_machine_client(self, namespace, **kwargs):
         # TODO: better error handling
-        docker_machine_json = self.run_docker_machine("inspect", namespace.docker_machine_name).decode('utf-8')
+        docker_machine_json = self.run_docker_machine(
+            "inspect", namespace.docker_machine_name).decode('utf-8')
         namespace.logger.debug("docker-machine json: %r", docker_machine_json)
         namespace.logger.debug("docker-machine json type: %r", type(docker_machine_json))
         docker_machine_json = json.loads(docker_machine_json)
