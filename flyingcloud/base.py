@@ -807,9 +807,10 @@ class DockerBuildLayer(object):
             datetime.datetime.utcnow().strftime(defaults['timestamp_format']))
         defaults.setdefault('operation', 'build')
 
+        defaults.setdefault('timeout', self.DefaultTimeout)
         defaults.setdefault('pull_layer', True)
         defaults.setdefault('push_layer', True)
-        defaults.setdefault('squash_layer', True)
+        defaults.setdefault('squash_layer', False)
         defaults.setdefault('logged_in', False)
         defaults.setdefault('retries', 3)
         defaults.setdefault('username', os.environ.get(self.USERNAME_ENV_VAR))
@@ -823,7 +824,7 @@ class DockerBuildLayer(object):
         parser.set_defaults(**defaults)
 
         parser.add_argument(
-            '--timeout', '-t', type=int, default=self.DefaultTimeout,
+            '--timeout', '-t', type=int,
             help="Docker client timeout in seconds. Default: %(default)s")
         # TODO: pull_layer and push_layer should be disabled by default for --run and --kill
         parser.add_argument(
@@ -870,12 +871,12 @@ class DockerBuildLayer(object):
             parser.add_argument(
                 '--use-docker-machine', '-M', dest='use_docker_machine',
                 action='store_true',
-                help = "Use Docker Machine rather than Docker for Mac/Windows. "
-                       "Default: %(default)s")
+                help="Use Docker Machine rather than Docker for Mac/Windows. "
+                     "Default: %(default)s")
             parser.add_argument(
                 '--no-use-docker-machine', '-m', dest='use_docker_machine',
                 action='store_false',
-                help = "Do not use Docker Machine")
+                help="Do not use Docker Machine")
             parser.add_argument(
                 '--docker-machine-name', '-N',
                 help="Name of machine to use with Docker Machine. Default: '%(default)s'")
