@@ -39,7 +39,8 @@ exposed_ports:
         assert project_info is not None
         assert layers
         assert len(layers) == 1
-        assert layers[0].exposed_ports == [80, 443]
+        the_layer = layers[list(layers.keys())[0]]
+        assert the_layer.exposed_ports == [80, 443]
 
     def test_parse_project_yaml(self):
         project_info = {
@@ -68,9 +69,10 @@ exposed_ports:
         layers = parse_project_yaml(project_info, layers_info)
         assert layers is not None
         assert len(layers) == 1
-        assert type(layers[0]) == DockerBuildLayer
-        assert layers[0].registry_config['host'] == 'quay.io'
-        assert layers[0].exposed_ports == [80]
+        the_layer = layers[list(layers.keys())[0]]
+        assert type(the_layer) == DockerBuildLayer
+        assert the_layer.registry_config['host'] == 'quay.io'
+        assert the_layer.exposed_ports == [80]
 
     def test_parse_project_yaml_minimal(self):
         project_info = {
@@ -88,7 +90,7 @@ exposed_ports:
         layers = parse_project_yaml(project_info, layers_info)
         assert layers is not None
         assert len(layers) == 1
-        assert type(layers[0]) == DockerBuildLayer
+        assert type(layers[list(layers.keys())[0]]) == DockerBuildLayer
 
     def test_parse_project_yaml_raises_on_missing_layer_help(self):
         project_info = {

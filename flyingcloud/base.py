@@ -128,9 +128,9 @@ class DockerBuildLayer(object):
         # These require the command-line args to properly initialize
         self.layer_timestamp_name = self.layer_squashed_name = None
 
-    def main(self, defaults, *layer_classes, **kwargs):
+    def main(self, defaults, layer_classes, **kwargs):
         self.check_user_is_root()
-        namespace = self.parse_args(defaults, *layer_classes, **kwargs)
+        namespace = self.parse_args(defaults, layer_classes, **kwargs)
         self.check_environment_variables(namespace)
         self.do_operation(namespace)
 
@@ -802,7 +802,7 @@ class DockerBuildLayer(object):
         """Override to add additional configuration to namespace"""
         pass
 
-    def parse_args(self, defaults, *layer_classes, **kwargs):
+    def parse_args(self, defaults, layer_classes, **kwargs):
         parser = argparse.ArgumentParser(
             prog='flyingcloud',
             description=kwargs.pop('description', "Build a Docker image using SaltStack"))
@@ -852,6 +852,9 @@ class DockerBuildLayer(object):
             '--no-push', '-P', dest='push_layer', action='store_false',
             help="Do not push Docker image to repository")
         parser.add_argument(
+            '--squash', dest='squash_layer', action='store_true',
+            help="Squash Docker image. Default: %(default)s")
+        parser.add_argument(
             '--no-squash', '-S', dest='squash_layer', action='store_false',
             help="Do not squash Docker image")
         parser.add_argument(
@@ -860,14 +863,16 @@ class DockerBuildLayer(object):
                  "Default: %(default)d")
         parser.add_argument(
             '--commit-failed-builds', '-C', action='store_true',
-            help="Commit failed builds. Will also push to repository, if that's configured. "
+            help="Commit failed builds. "
+                 "Will also push to repository, if that's configured. "
                  "This aids postmortem debugging.")
         parser.add_argument(
             '--debug', '-D', action='store_true',
             help="Set terminal logging level to DEBUG, etc")
         parser.add_argument(
             '--env', '-E', action='append', dest='env_vars', metavar='ENV_VAR',
-            help="Set environment variables for --run. Use --env VAR1=value1 --env VAR2=value2 ...")
+            help="Set environment variables for --run. "
+                 "Use --env VAR1=value1 --env VAR2=value2 ...")
         parser.add_argument(
             '--username', '-u',
             help="Username for Docker registry. Default: %(default)r")
@@ -877,14 +882,15 @@ class DockerBuildLayer(object):
                 self.elide_password(parser.get_default('password'))))
         parser.add_argument(
             '--email', '-e',
-            help="Email address for Docker registry. Default: %(default)r")
+            help="Email address for Docker registry. "
+                 "Default: %(default)r. Deprecated.")
 
         if self.docker_machine_platform():
             parser.add_argument(
                 '--use-docker-machine', '-M', dest='use_docker_machine',
                 action='store_true',
                 help="Use Docker Machine rather than Docker for Mac/Windows. "
-                     "Default: %(default)s")
+                     "Default: %(default)s. Deprecated.")
             parser.add_argument(
                 '--no-use-docker-machine', '-m', dest='use_docker_machine',
                 action='store_false',
@@ -909,14 +915,11 @@ class DockerBuildLayer(object):
             title="Layer Names",
             description="The layers which can be built, run, or killed.")
 
-        layer_dict = {}
-        for layer_class_or_inst in layer_classes:
+        for layer_name, layer_class_or_inst in layer_classes.items():
             if type(layer_class_or_inst).__name__ == 'classobj':
                 layer_inst = layer_class_or_inst()
-                layer_dict[layer_class_or_inst.__name__] = layer_inst
             else:
                 layer_inst = layer_class_or_inst
-                layer_dict[layer_inst.__class__.__name__] = layer_inst
             subparser = subparsers.add_parser(
                 layer_inst.layer_name,
                 description=layer_inst.description,
@@ -925,7 +928,7 @@ class DockerBuildLayer(object):
                 layer_inst=layer_inst,
             )
             layer_inst.add_parser_options(subparser)
-        parser.set_defaults(layer_dict=layer_dict)
+        parser.set_defaults(layer_dict=layer_classes)
 
         namespace = parser.parse_args()
 
