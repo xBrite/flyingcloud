@@ -599,12 +599,12 @@ class DockerBuildLayer(object):
     # See "Stream details" at https://docs.docker.com/engine/api/v1.18/
     # {STREAM_TYPE, 0, 0, 0, SIZE1, SIZE2, SIZE3, SIZE4}
     # STREAM_TYPE = 0 (stdin), = 1 (stdout), = 2 (stderr)
-    StreamTypeHeader = re.compile(r'[\x00-\x02]\x00\x00\x00....')
+    StreamTypeHeader = re.compile(br'[\x00-\x02]\x00\x00\x00....')
 
     @classmethod
     def filter_stream_header(cls, s):
         """Remove bogus stream headers from socket output"""
-        new_string, repl_count = cls.StreamTypeHeader.subn('', s)
+        new_string, repl_count = cls.StreamTypeHeader.subn(b'', s)
         return new_string, repl_count
 
     def docker_commit(self, namespace, container_id, result_image_name):

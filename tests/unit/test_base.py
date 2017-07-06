@@ -103,7 +103,7 @@ environment:
         assert "https://whitewhale.com/mobydick" == registry
 
     def test_filter_stream_header(self):
-        assert ("""decorator 4.0.11 is already the active version in easy-install.pth""", 1) == DBL.filter_stream_header(
-            """decorator 4.0.11 is already th\x01\x00\x00\x00\x00\x00 \x00e active version in easy-install.pth""")
-        assert ("Constructing docker client object with {u'version': '1.17', 'timeout': 300}", 0) == DBL.filter_stream_header(
-            "Constructing docker client object with {u'version': '1.17', 'timeout': 300}")
+        assert (b"""decorator 4.0.11 is already the active version in easy-install.pth""", 1) == DBL.filter_stream_header(
+            b"""decorator 4.0.11 is already th\x01\x00\x00\x00\x00\x00 \x00e active version in easy-install.pth""")
+        assert (b"Constructing docker client object with {u'version': '1.17', 'timeout': 300}", 0) == DBL.filter_stream_header(
+            b"Constructing docker client object with {u'version': '1.17', 'timeout': 300}")
