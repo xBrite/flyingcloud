@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function, unicode_literals, absolute_import
+
 import os
 import yaml
 
@@ -100,3 +102,8 @@ environment:
         assert "none" == namespace.email
         assert "https://whitewhale.com/mobydick" == registry
 
+    def test_filter_stream_header(self):
+        assert ("""decorator 4.0.11 is already the active version in easy-install.pth""", 1) == DBL.filter_stream_header(
+            """decorator 4.0.11 is already th\x01\x00\x00\x00\x00\x00 \x00e active version in easy-install.pth""")
+        assert ("Constructing docker client object with {u'version': '1.17', 'timeout': 300}", 0) == DBL.filter_stream_header(
+            "Constructing docker client object with {u'version': '1.17', 'timeout': 300}")

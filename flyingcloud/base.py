@@ -578,10 +578,11 @@ class DockerBuildLayer(object):
         logger = getattr(namespace.logger, logging.getLevelName(log_level).lower())
         full_output = []
 
-        for chunk in generator:
+        for raw_chunk in generator:
             try:
+                chunk, repl_count = self.filter_stream_header(raw_chunk)
                 decoded_chunk = chunk.decode('utf-8')
-            except UnicodeDecodeError as e:
+            except UnicodeDecodeError:
                 decoded_chunk = chunk.decode('utf-8', 'replace')
                 logger("Couldn't decode %s", hexdump(chunk, 64))
 
@@ -594,6 +595,17 @@ class DockerBuildLayer(object):
             if isinstance(data, dict) and 'error' in data:
                 raise DockerResultError("Error: {!r}".format(data))
         return '\n'.join(full_output)
+
+    # See "Stream details" at https://docs.docker.com/engine/api/v1.18/
+    # {STREAM_TYPE, 0, 0, 0, SIZE1, SIZE2, SIZE3, SIZE4}
+    # STREAM_TYPE = 0 (stdin), = 1 (stdout), = 2 (stderr)
+    StreamTypeHeader = re.compile(r'[\x00-\x02]\x00\x00\x00....')
+
+    @classmethod
+    def filter_stream_header(cls, s):
+        """Remove bogus stream headers from socket output"""
+        new_string, repl_count = cls.StreamTypeHeader.subn('', s)
+        return new_string, repl_count
 
     def docker_commit(self, namespace, container_id, result_image_name):
         repo, tag = self.image_name2repo_tag(result_image_name)
@@ -1009,7 +1021,8 @@ class DockerBuildLayer(object):
 
     def get_docker_machine_client(self, namespace, **kwargs):
         # TODO: better error handling
-        docker_machine_json = self.run_docker_machine("inspect", namespace.docker_machine_name).decode('utf-8')
+        docker_machine_json = self.run_docker_machine(
+            "inspect", namespace.docker_machine_name).decode('utf-8')
         namespace.logger.debug("docker-machine json: %r", docker_machine_json)
         namespace.logger.debug("docker-machine json type: %r", type(docker_machine_json))
         docker_machine_json = json.loads(docker_machine_json)
