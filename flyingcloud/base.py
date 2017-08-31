@@ -693,17 +693,17 @@ class DockerBuildLayer(object):
     def docker_push(self, namespace, image_name, **kwargs):
         return self._docker_push_pull(namespace, image_name, "push", **kwargs)
 
-    def _docker_push_pull(self, ns, image_name, verb, **kwargs):
+    def _docker_push_pull(self, namespace, image_name, verb, **kwargs):
         self.login_registry(ns)
         give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
-            verb, image_name, ns.retries)
+            verb, image_name, namespace.retries)
         repo, tag = self.image_name2repo_tag(image_name)
-        method = getattr(ns.docker, verb)
+        method = getattr(namespace.docker, verb)
 
         def do_it():
             generator = method(repository=repo, tag=tag, stream=True)
             return self.read_docker_output_stream(ns, generator, "docker_{}".format(verb), **kwargs)
-        retry_call(do_it, ns.logger, ns.retries)
+        retry_call(do_it, namespace.logger, namespace.retries)
 
 
     def update_docker_tags_json(self, namespace, layer_strong_name):
@@ -730,16 +730,17 @@ class DockerBuildLayer(object):
         namespace.logger.info("get_latest_tag('%s') = '%s'", repo, tag)
         return tag
 
-    def docker_login(self, ns, username, password, email=None, registry=None):
+    def docker_login(self, namespace, username, password, email=None, registry=None):
         if registry:
             if username and password:
-                ns.logger.info(
+                namespace.logger.info(
                     "Logging in to registry=%r, username=%r, password=%r, email=%r",
                     registry, username, self.elide_password(password), email)
                 kwargs = dict(username=username, password=password, registry=registry)
                 if email is not None:
                     kwargs['email'] = email
-                return retry_call(ns.docker.login, ns.logger, ns.retries, **kwargs)
+                return retry_call(namespace.docker.login, namespace.logger,
+                        namespace.retries, **kwargs)
 
             elif self.registry_config['login_required']:
                 assert username, "No username"
