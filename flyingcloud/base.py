@@ -27,6 +27,7 @@ from .exceptions import *
 from .utils import disk_usage, abspath, hexdump
 
 STREAMING_CHUNK_SIZE = (1 << 20)
+from .utils.docker_util import retry_call
 
 
 # TODO
@@ -692,28 +693,18 @@ class DockerBuildLayer(object):
     def docker_push(self, namespace, image_name, **kwargs):
         return self._docker_push_pull(namespace, image_name, "push", **kwargs)
 
-    def _docker_push_pull(self, namespace, image_name, verb, **kwargs):
-        self.login_registry(namespace)
+    def _docker_push_pull(self, ns, image_name, verb, **kwargs):
+        self.login_registry(ns)
         give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
-            verb, image_name, namespace.retries)
+            verb, image_name, ns.retries)
         repo, tag = self.image_name2repo_tag(image_name)
-        method = getattr(namespace.docker, verb)
-        for attempt in range(1, namespace.retries + 1):
-            try:
-                namespace.logger.info(
-                    "docker_%s repo=%s, tag=%s, attempt %d/%d",
-                    verb, repo, tag, attempt, namespace.retries)
-                generator = method(repository=repo, tag=tag, stream=True)
-                return self.read_docker_output_stream(
-                    namespace, generator, "docker_{}".format(verb), **kwargs)
-            except (DockerResultError, docker.errors.DockerException, docker.errors.APIError):
-                if attempt == namespace.retries:
-                    namespace.logger.info("%s", give_up_message)
-                    namespace.logger.info(
-                        "Perhaps you need to reset your Docker credentials in '~/.docker/'?")
-                    raise
-        else:
-            raise DockerResultError(give_up_message)
+        method = getattr(ns.docker, verb)
+
+        def do_it():
+            generator = method(repository=repo, tag=tag, stream=True)
+            return self.read_docker_output_stream(ns, generator, "docker_{}".format(verb), **kwargs)
+        retry_call(do_it, ns.logger, ns.retries)
+
 
     def update_docker_tags_json(self, namespace, layer_strong_name):
         repo, tag = self.image_name2repo_tag(layer_strong_name)
@@ -739,16 +730,17 @@ class DockerBuildLayer(object):
         namespace.logger.info("get_latest_tag('%s') = '%s'", repo, tag)
         return tag
 
-    def docker_login(self, namespace, username, password, email=None, registry=None):
+    def docker_login(self, ns, username, password, email=None, registry=None):
         if registry:
             if username and password:
-                namespace.logger.info(
+                ns.logger.info(
                     "Logging in to registry=%r, username=%r, password=%r, email=%r",
                     registry, username, self.elide_password(password), email)
                 kwargs = dict(username=username, password=password, registry=registry)
                 if email is not None:
                     kwargs['email'] = email
-                return namespace.docker.login(**kwargs)
+                return retry_call(ns.docker.login, ns.logger, ns.retries, **kwargs)
+
             elif self.registry_config['login_required']:
                 assert username, "No username"
                 assert password, "No password"
