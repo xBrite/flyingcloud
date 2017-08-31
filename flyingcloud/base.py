@@ -23,6 +23,7 @@ import re
 import sh
 import time
 
+from .exceptions import *
 from .utils import disk_usage, abspath, hexdump
 
 STREAMING_CHUNK_SIZE = (1 << 20)
@@ -31,29 +32,6 @@ STREAMING_CHUNK_SIZE = (1 << 20)
 # TODO
 # - do a better job of logging container-ids and image-ids
 # - unit tests, using a mock docker-py
-
-class FlyingCloudError(Exception):
-    """Base error"""
-
-
-class EnvironmentVarError(FlyingCloudError):
-    """Missing environment variable"""
-
-
-class NotSudoError(FlyingCloudError):
-    """Not running as root"""
-
-
-class CommandError(FlyingCloudError):
-    """Command failure"""
-
-
-class ExecError(FlyingCloudError):
-    """Failure to run a command in Docker container"""
-
-
-class DockerResultError(FlyingCloudError):
-    """Error in result from Docker Daemon"""
 
 
 class DockerBuildLayer(object):
