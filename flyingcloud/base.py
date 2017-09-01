@@ -23,37 +23,16 @@ import re
 import sh
 import time
 
+from .exceptions import *
 from .utils import disk_usage, abspath, hexdump
 
 STREAMING_CHUNK_SIZE = (1 << 20)
+from .utils.docker_util import retry_call
 
 
 # TODO
 # - do a better job of logging container-ids and image-ids
 # - unit tests, using a mock docker-py
-
-class FlyingCloudError(Exception):
-    """Base error"""
-
-
-class EnvironmentVarError(FlyingCloudError):
-    """Missing environment variable"""
-
-
-class NotSudoError(FlyingCloudError):
-    """Not running as root"""
-
-
-class CommandError(FlyingCloudError):
-    """Command failure"""
-
-
-class ExecError(FlyingCloudError):
-    """Failure to run a command in Docker container"""
-
-
-class DockerResultError(FlyingCloudError):
-    """Error in result from Docker Daemon"""
 
 
 class DockerBuildLayer(object):
@@ -715,27 +694,17 @@ class DockerBuildLayer(object):
         return self._docker_push_pull(namespace, image_name, "push", **kwargs)
 
     def _docker_push_pull(self, namespace, image_name, verb, **kwargs):
-        self.login_registry(namespace)
+        self.login_registry(ns)
         give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
             verb, image_name, namespace.retries)
         repo, tag = self.image_name2repo_tag(image_name)
         method = getattr(namespace.docker, verb)
-        for attempt in range(1, namespace.retries + 1):
-            try:
-                namespace.logger.info(
-                    "docker_%s repo=%s, tag=%s, attempt %d/%d",
-                    verb, repo, tag, attempt, namespace.retries)
-                generator = method(repository=repo, tag=tag, stream=True)
-                return self.read_docker_output_stream(
-                    namespace, generator, "docker_{}".format(verb), **kwargs)
-            except (DockerResultError, docker.errors.DockerException, docker.errors.APIError):
-                if attempt == namespace.retries:
-                    namespace.logger.info("%s", give_up_message)
-                    namespace.logger.info(
-                        "Perhaps you need to reset your Docker credentials in '~/.docker/'?")
-                    raise
-        else:
-            raise DockerResultError(give_up_message)
+
+        def do_it():
+            generator = method(repository=repo, tag=tag, stream=True)
+            return self.read_docker_output_stream(ns, generator, "docker_{}".format(verb), **kwargs)
+        retry_call(do_it, namespace.logger, namespace.retries)
+
 
     def update_docker_tags_json(self, namespace, layer_strong_name):
         repo, tag = self.image_name2repo_tag(layer_strong_name)
@@ -770,7 +739,9 @@ class DockerBuildLayer(object):
                 kwargs = dict(username=username, password=password, registry=registry)
                 if email is not None:
                     kwargs['email'] = email
-                return namespace.docker.login(**kwargs)
+                return retry_call(namespace.docker.login, namespace.logger,
+                        namespace.retries, **kwargs)
+
             elif self.registry_config['login_required']:
                 assert username, "No username"
                 assert password, "No password"
