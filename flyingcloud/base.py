@@ -694,7 +694,7 @@ class DockerBuildLayer(object):
         return self._docker_push_pull(namespace, image_name, "push", **kwargs)
 
     def _docker_push_pull(self, namespace, image_name, verb, **kwargs):
-        self.login_registry(ns)
+        self.login_registry(namespace)
         give_up_message = "Couldn't {} {}. Giving up after {} attempts.".format(
             verb, image_name, namespace.retries)
         repo, tag = self.image_name2repo_tag(image_name)
@@ -702,7 +702,7 @@ class DockerBuildLayer(object):
 
         def do_it():
             generator = method(repository=repo, tag=tag, stream=True)
-            return self.read_docker_output_stream(ns, generator, "docker_{}".format(verb), **kwargs)
+            return self.read_docker_output_stream(namespace, generator, "docker_{}".format(verb), **kwargs)
         retry_call(do_it, namespace.logger, namespace.retries)
 
 
