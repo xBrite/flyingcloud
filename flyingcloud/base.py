@@ -548,7 +548,7 @@ class DockerBuildLayer(object):
         full_output = self.read_docker_output_stream(namespace, generator, "docker_exec", **kwargs)
         result = client.exec_inspect(exec_id=exec_id)
         exit_code = result['ExitCode']
-        if exit_code != 0 and raise_on_error:
+        if exit_code and raise_on_error:
             raise ExecError("docker_exec exit code was non-zero: {} (result: {})".format(exit_code, result))
         return result, full_output
 
