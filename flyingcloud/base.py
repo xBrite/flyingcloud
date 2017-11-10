@@ -25,9 +25,9 @@ import time
 
 from .exceptions import *
 from .utils import disk_usage, abspath, hexdump
+from .utils.docker_util import retry_call
 
 STREAMING_CHUNK_SIZE = (1 << 20)
-from .utils.docker_util import retry_call
 
 
 # TODO
@@ -703,8 +703,8 @@ class DockerBuildLayer(object):
         def do_it():
             generator = method(repository=repo, tag=tag, stream=True)
             return self.read_docker_output_stream(namespace, generator, "docker_{}".format(verb), **kwargs)
-        retry_call(do_it, namespace.logger, namespace.retries)
 
+        retry_call(do_it, verb, namespace.logger, namespace.retries)
 
     def update_docker_tags_json(self, namespace, layer_strong_name):
         repo, tag = self.image_name2repo_tag(layer_strong_name)
@@ -739,9 +739,8 @@ class DockerBuildLayer(object):
                 kwargs = dict(username=username, password=password, registry=registry)
                 if email is not None:
                     kwargs['email'] = email
-                return retry_call(namespace.docker.login, namespace.logger,
-                        namespace.retries, **kwargs)
-
+                return retry_call(namespace.docker.login, 'login',
+                                  namespace.logger, namespace.retries, **kwargs)
             elif self.registry_config['login_required']:
                 assert username, "No username"
                 assert password, "No password"
