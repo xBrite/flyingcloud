@@ -52,23 +52,23 @@ exposed_ports:
 
     def test_make_environment1(self):
         config_yamls = [
-"""\
-environment:
-  - AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-  - AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-  - AWS_DEFAULT_REGION: us-east-1
-  - INI_FILE: test.ini
-  - PIP: $VIRTUAL_ENV/bin/pip
-""",
-"""\
-environment:
-  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-  AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-  AWS_DEFAULT_REGION: us-east-1
-  INI_FILE: test.ini
-  PIP: $VIRTUAL_ENV/bin/pip
-""",
-]
+            """\
+            environment:
+              - AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+              - AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+              - AWS_DEFAULT_REGION: us-east-1
+              - INI_FILE: test.ini
+              - PIP: $VIRTUAL_ENV/bin/pip
+            """,
+            """\
+            environment:
+              AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+              AWS_DEFAULT_REGION: us-east-1
+              INI_FILE: test.ini
+              PIP: $VIRTUAL_ENV/bin/pip
+            """,
+        ]
         for cy in config_yamls:
             assert dict(
                 AWS_ACCESS_KEY_ID="axes_quay",
@@ -92,6 +92,32 @@ environment:
                     VIRTUAL_ENV="/venv",
                 )
             )
+
+    def test_make_environment_fails(self):
+        config_yamls = [
+            """\
+            environment:
+              - AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+              - AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+            """,
+            """\
+            environment:
+              - FOO: $BAR
+            """,
+            """\
+            environment:
+              - FOO:
+            """,
+        ]
+        for cy in config_yamls:
+            with pytest.raises(ValueError):
+                self._make_environment(
+                    [],
+                    env_config_yaml=cy,
+                    os_environ=dict(
+                        AWS_ACCESS_KEY_ID="axes_quay",
+                    )
+                )
 
     def test_parse_docker_login(self):
         args = ["docker", "login", "-u", "ahab", "-p", "CallMeIshmael",

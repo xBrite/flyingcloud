@@ -158,6 +158,15 @@ class DockerBuildLayer(object):
         :param env_config: dict(VAR1="$SOME_VALUE", VAR2="${OTHER_VALUE}", VAR3="literal")
         :return: dict
         """
+        def expandvar(env, k, v):
+            v2 = os.path.expandvars(v) if v else None
+            if not v2:
+                raise ValueError("Can't expand {}='{}'".format(k, v))
+            elif v in v2 and '$' in v:
+                raise ValueError("Can't expand {}='{}' expansion='{}'".format(k, v, v2))
+            else:
+                env[k] = v2
+
         env = env or {}
         for e in (env_config or []):
             if isinstance(e, dict):
@@ -166,18 +175,18 @@ class DockerBuildLayer(object):
                 #     - AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
                 #     - AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
                 for k, v in e.items():
-                    env[k] = os.path.expandvars(v)
+                    expandvar(env, k, v)
             else:
                 # Handle:
                 #   environment:
                 #     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
                 #     AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-                env[e] = os.path.expandvars(env_config[e])
+                expandvar(env, e, env_config[e])
         # env_var_list (from command line) trumps env_config
         for e in (env_var_list or []):
             # Handle "key=value"
             k, v = tuple(e.split('=', 1))
-            env[k] = v
+            expandvar(env, k, v)
         return env
 
     def do_kill(self, namespace):
