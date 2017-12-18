@@ -21,7 +21,7 @@ class TestDockerUtils(unittest.TestCase):
 
         logger = MagicMock()
         counter = {"c": 0}
-        res = retry_call(fn, logger, 3, counter)
+        res = retry_call(fn, 'test_retry_success', logger, 3, counter)
 
         self.assertEqual(res, "yay")
         self.assertEqual(counter["c"], 2)
@@ -35,5 +35,5 @@ class TestDockerUtils(unittest.TestCase):
         logger = MagicMock()
         counter = {"c": 0}
 
-        self.assertRaises(DockerException, retry_call, fn, logger, 3, counter)
+        self.assertRaises(DockerException, retry_call, fn, 'test_retry_failure', logger, 3, counter)
         self.assertEqual(counter["c"], 3)
